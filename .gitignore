@@ -1,0 +1,10 @@
+node_modules/
+.next/
+*.pyc
+__pycache__/
+.env
+*.db
+backend/data/
+venv/
+.venv/
+dist/
