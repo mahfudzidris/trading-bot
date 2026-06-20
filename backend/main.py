@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 import random
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as date_type
 from typing import Any
+from enum import Enum
 
 from fastapi import FastAPI, Depends, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,24 @@ from strategy.engine import StrategyEngine
 from db.models import init_db, get_db
 from db import crud
 from scheduler.daily_run import run_daily
+from backtest.engine import BacktestEngine
+from pydantic import BaseModel
+
+# ── Request models ─────────────────────────────────────────────────────────
+
+
+class BacktestRequest(BaseModel):
+    symbol: str = "AAPL"
+    start_date: str = "2025-01-01"
+    end_date: str | None = None
+    initial_capital: float = 100_000.0
+    stop_loss_pct: float = 0.02
+    take_profit_pct: float = 0.05
+    max_position_size_pct: float = 0.1
+    commission_pct: float = 0.001
+    slippage_pct: float = 0.001
+    use_ai: bool = True
+
 
 # ── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -365,3 +384,75 @@ async def get_performance(
     _, _, _, engine = _get_services()
     summary = await engine.get_performance_summary(days=days)
     return summary
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Backtest Endpoints
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@app.post("/api/backtest/run", response_model=dict[str, Any])
+async def run_backtest_endpoint(
+    req: BacktestRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Run a full backtest with the given parameters."""
+    dc, ai, _, _ = _get_services()
+
+    strategy_params = {
+        "stop_loss_pct": req.stop_loss_pct,
+        "take_profit_pct": req.take_profit_pct,
+        "max_position_size_pct": req.max_position_size_pct,
+        "use_ai": req.use_ai,
+    }
+
+    engine = BacktestEngine(
+        data_client=dc,
+        ai_analyzer=ai,
+        initial_capital=req.initial_capital,
+        commission_pct=req.commission_pct,
+        slippage_pct=req.slippage_pct,
+    )
+
+    try:
+        result = await engine.run(
+            symbol=req.symbol,
+            start_date=req.start_date,
+            end_date=req.end_date,
+            strategy_params=strategy_params,
+        )
+        result_dict = result.to_dict()
+
+        # Save to DB (creates backtest record + individual trades)
+        try:
+            await crud.save_backtest_result(db, result_dict)
+        except Exception as save_exc:
+            logger.warning("Failed to save backtest result: %s", save_exc)
+
+        return {"ok": True, "result": result_dict}
+
+    except Exception as exc:
+        logger.exception("Backtest failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/backtest/results", response_model=list[dict[str, Any]])
+async def get_backtest_results(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Return all stored backtest results."""
+    results = await crud.get_backtest_results(db, limit=limit)
+    return results
+
+
+@app.get("/api/backtest/results/{backtest_id}", response_model=dict[str, Any])
+async def get_backtest_detail(
+    backtest_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Return a single backtest result by ID with full details."""
+    result = await crud.get_backtest_by_id(db, backtest_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Backtest result not found")
+    return result

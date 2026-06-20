@@ -7,6 +7,8 @@ import type {
   Trade,
   TradeFilters,
   PaginatedResponse,
+  BacktestRequest,
+  BacktestResult,
 } from '@/types';
 
 const BASE_URL =
@@ -249,4 +251,21 @@ export async function runAnalysis(): Promise<{ success: boolean; message: string
   return request<{ success: boolean; message: string }>('/api/analysis/run', {
     method: 'POST',
   });
+}
+
+// ── Backtest API Functions ────────────────────────────────────────────────
+
+export async function runBacktest(req: BacktestRequest): Promise<{ ok: boolean; result: BacktestResult }> {
+  return request<{ ok: boolean; result: BacktestResult }>('/api/backtest/run', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+export async function fetchBacktestResults(limit = 10): Promise<BacktestResult[]> {
+  return request<BacktestResult[]>(`/api/backtest/results?limit=${limit}`);
+}
+
+export async function fetchBacktestDetail(id: number): Promise<BacktestResult> {
+  return request<BacktestResult>(`/api/backtest/results/${id}`);
 }

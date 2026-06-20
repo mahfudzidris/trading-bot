@@ -133,6 +133,81 @@ class Position(Base):
         }
 
 
+class BacktestResult(Base):
+    """Stored results from a completed backtest run."""
+
+    __tablename__ = "backtest_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    symbol = Column(String(20), nullable=False, index=True)
+    start_date = Column(String(10), nullable=False)
+    end_date = Column(String(10), nullable=False)
+    initial_capital = Column(Float, default=100_000.0)
+    days = Column(Integer, default=0)
+    total_pnl = Column(Float, default=0.0)
+    total_pnl_pct = Column(Float, default=0.0)
+    final_capital = Column(Float, default=0.0)
+    total_trades = Column(Integer, default=0)
+    wins = Column(Integer, default=0)
+    losses = Column(Integer, default=0)
+    win_rate = Column(Float, default=0.0)
+    avg_win = Column(Float, default=0.0)
+    avg_loss = Column(Float, default=0.0)
+    best_trade = Column(Float, default=0.0)
+    worst_trade = Column(Float, default=0.0)
+    avg_trade = Column(Float, default=0.0)
+    profit_factor = Column(Float, default=0.0)
+    expectancy = Column(Float, default=0.0)
+    max_drawdown = Column(Float, default=0.0)
+    max_drawdown_pct = Column(Float, default=0.0)
+    sharpe_ratio = Column(Float, default=0.0)
+    sortino_ratio = Column(Float, default=0.0)
+    calmar_ratio = Column(Float, default=0.0)
+    cagr = Column(Float, default=0.0)
+    volatility = Column(Float, default=0.0)
+    avg_bars_held = Column(Float, default=0.0)
+    max_consecutive_wins = Column(Integer, default=0)
+    max_consecutive_losses = Column(Integer, default=0)
+    monthly_returns_json = Column(Text, nullable=True)  # JSON blob
+    errors = Column(Text, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "symbol": self.symbol,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "initial_capital": self.initial_capital,
+            "days": self.days,
+            "total_pnl": self.total_pnl,
+            "total_pnl_pct": self.total_pnl_pct,
+            "final_capital": self.final_capital,
+            "total_trades": self.total_trades,
+            "wins": self.wins,
+            "losses": self.losses,
+            "win_rate": self.win_rate,
+            "avg_win": self.avg_win,
+            "avg_loss": self.avg_loss,
+            "best_trade": self.best_trade,
+            "worst_trade": self.worst_trade,
+            "avg_trade": self.avg_trade,
+            "profit_factor": self.profit_factor,
+            "expectancy": self.expectancy,
+            "max_drawdown": self.max_drawdown,
+            "max_drawdown_pct": self.max_drawdown_pct,
+            "sharpe_ratio": self.sharpe_ratio,
+            "sortino_ratio": self.sortino_ratio,
+            "calmar_ratio": self.calmar_ratio,
+            "cagr": self.cagr,
+            "volatility": self.volatility,
+            "avg_bars_held": self.avg_bars_held,
+            "max_consecutive_wins": self.max_consecutive_wins,
+            "max_consecutive_losses": self.max_consecutive_losses,
+        }
+
+
 # ── Database initialisation ────────────────────────────────────────────────
 
 _engine: object | None = None

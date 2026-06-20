@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   TrendingUp,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/trades', label: 'Trades', icon: Repeat2 },
   { href: '/analysis', label: 'Analysis', icon: BarChart3 },
+  { href: '/backtest', label: 'Backtest', icon: FlaskConical },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
