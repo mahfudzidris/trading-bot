@@ -15,7 +15,7 @@ import { fetchTrades } from '@/lib/api';
 import type { Trade, PaginatedResponse } from '@/types';
 import { cn } from '@/lib/utils';
 
-const SYMBOLS = ['', 'BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'];
+const SYMBOLS = ['', 'AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
 
 export default function TradesPage() {
   const [tradesData, setTradesData] = useState<PaginatedResponse<Trade> | null>(null);

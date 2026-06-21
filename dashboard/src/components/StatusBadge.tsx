@@ -13,9 +13,9 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
     closed: { label: 'Closed', bg: 'bg-green-500/15', text: 'text-green-400', dot: 'bg-green-400' },
     buy: { label: 'Buy', bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
     sell: { label: 'Sell', bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-400' },
-  };
+  } as const;
 
-  const c = config[status];
+  const c = config[status.toLowerCase() as keyof typeof config];
   return (
     <span
       className={cn(

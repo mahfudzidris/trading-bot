@@ -97,7 +97,7 @@ export default function PerformancePanel({
       </h3>
 
       <div className="flex justify-center">
-        <DonutChart winRate={performance.winRate} />
+        <DonutChart winRate={performance.winRate ?? 0} />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">

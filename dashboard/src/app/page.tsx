@@ -44,7 +44,7 @@ export default function DashboardPage() {
       ]);
       setAccount(acc);
       setReports(rep);
-      setRecentTrades(trades.data);
+      setRecentTrades(trades?.data ?? []);
       setPerformance(perf);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       <SummaryCards
         totalPnl={account?.totalPnl ?? 0}
         winRate={performance?.winRate ?? 0}
-        openPositions={recentTrades.filter((t) => t.status === 'open').length}
+        openPositions={(recentTrades ?? []).filter((t) => (t.status ?? '').toLowerCase() === 'open').length}
         dayPnl={account?.dayPnl ?? 0}
       />
 
