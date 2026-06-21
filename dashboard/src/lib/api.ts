@@ -288,8 +288,9 @@ export async function executeTrade(data: {
   });
 }
 
-export async function fetchStrategy(): Promise<any> {
-  return request('/api/strategy');
+export async function fetchStrategy(symbol?: string): Promise<any> {
+  const qs = symbol ? `?symbol=${symbol}` : '';
+  return request(`/api/strategy${qs}`);
 }
 
 export async function fetchPerformance(): Promise<Performance> {

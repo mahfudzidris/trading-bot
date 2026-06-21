@@ -14,6 +14,8 @@ import {
   BookOpen,
   Cpu,
   Layers,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
 import { fetchStrategy } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -41,7 +43,6 @@ interface ModelInfo {
 interface StrategyData {
   name: string;
   description: string;
-  promptTemplate: string;
   indicators: Indicator[];
   decisionFields: Record<string, string>;
   ensembleStrategies?: { name: string; inputs: string[]; logic: string }[];
@@ -49,19 +50,32 @@ interface StrategyData {
   riskParameters: RiskParams;
   account: { buyingPower: number; cash: number };
   model: ModelInfo;
+  liveData?: LiveData | null;
+}
+
+interface LiveData {
+  symbol: string;
+  prompt: string | null;
+  error?: string;
+  priceData?: { price: number; changePct: number; volume: number; timestamp: string };
+  indicators?: Record<string, number>;
+  strategySignals?: { name: string; signal: string; confidence: number; reasoning: string }[];
+  strategySummary?: { consensus: string; avgConfidence: number; votes: Record<string, number> };
 }
 
 export default function StrategyPage() {
+  const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
+  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
   const [data, setData] = useState<StrategyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (symbol: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchStrategy();
+      const result = await fetchStrategy(symbol);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load strategy');
@@ -71,8 +85,8 @@ export default function StrategyPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(selectedSymbol);
+  }, [selectedSymbol]);
 
   if (loading) {
     return (
@@ -102,7 +116,7 @@ export default function StrategyPage() {
           <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
           <p className="text-sm text-red-400">{error}</p>
           <button
-            onClick={loadData}
+            onClick={() => loadData(selectedSymbol)}
             className="ml-auto rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/30"
           >
             Retry
@@ -124,13 +138,27 @@ export default function StrategyPage() {
             How the AI analyses the market and generates trading signals
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700/50"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <select
+              value={selectedSymbol}
+              onChange={(e) => setSelectedSymbol(e.target.value)}
+              className="appearance-none rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 pr-8 text-sm font-medium text-slate-200 outline-none focus:border-emerald-500/50"
+            >
+              {SYMBOLS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <BarChart3 className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </div>
+          <button
+            onClick={() => loadData(selectedSymbol)}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700/50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Strategy Overview */}
@@ -183,33 +211,160 @@ export default function StrategyPage() {
         </div>
       </div>
 
-      {/* AI Prompt */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">
-        <button
-          onClick={() => setShowPrompt(!showPrompt)}
-          className="flex w-full items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
-              <BookOpen className="h-4 w-4 text-indigo-400" />
+      {/* ── Live Preview (prompt + signals + indicators) ── */}
+      {data.liveData && data.liveData.error && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <AlertCircle className="h-4 w-4 text-amber-400" />
+          <p className="text-xs text-amber-400">Could not fetch live data: {data.liveData.error}</p>
+        </div>
+      )}
+
+      {data.liveData && data.liveData.prompt && (
+        <>
+          {/* Live Indicators */}
+          {data.liveData.indicators && (
+            <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-400" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                    Live Indicators — {data.liveData.symbol}
+                  </h2>
+                </div>
+                <span className="text-[10px] text-slate-500">
+                  {data.liveData.priceData?.timestamp ?? ''}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: 'Price', value: data.liveData.priceData?.price, fmt: 'currency' },
+                  { label: 'Change', value: data.liveData.priceData?.changePct, fmt: 'percent' },
+                  { label: 'SMA(20)', value: data.liveData.indicators?.sma_20, fmt: 'currency' },
+                  { label: 'SMA(50)', value: data.liveData.indicators?.sma_50, fmt: 'currency' },
+                  { label: 'EMA(20)', value: data.liveData.indicators?.ema_20, fmt: 'currency' },
+                  { label: 'EMA(50)', value: data.liveData.indicators?.ema_50, fmt: 'currency' },
+                  { label: 'RSI(14)', value: data.liveData.indicators?.rsi_14, fmt: 'number' },
+                  { label: 'Volume', value: data.liveData.indicators?.volume, fmt: 'compact' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-lg bg-slate-800/50 p-2.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{item.label}</span>
+                    <p className="mt-0.5 font-mono text-sm font-bold text-slate-100">
+                      {item.value != null
+                        ? item.fmt === 'currency'
+                          ? `$${Number(item.value).toFixed(2)}`
+                          : item.fmt === 'percent'
+                            ? `${Number(item.value) >= 0 ? '+' : ''}${Number(item.value).toFixed(2)}%`
+                            : item.fmt === 'compact'
+                              ? Number(item.value) >= 1_000_000
+                                ? `${(Number(item.value) / 1_000_000).toFixed(1)}M`
+                                : Number(item.value).toLocaleString()
+                              : Number(item.value).toFixed(1)
+                        : '—'}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-              AI Prompt Template
-            </h2>
+          )}
+
+          {/* Live Strategy Signals */}
+          {data.liveData.strategySignals && data.liveData.strategySignals.length > 0 && (
+            <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-indigo-400" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                    Live Strategy Signals — {data.liveData.symbol}
+                  </h2>
+                </div>
+                {data.liveData.strategySummary && (
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-[10px] font-bold',
+                    data.liveData.strategySummary.consensus === 'BUY' ? 'bg-green-500/20 text-green-400' :
+                    data.liveData.strategySummary.consensus === 'SELL' ? 'bg-red-500/20 text-red-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  )}>
+                    Consensus: {data.liveData.strategySummary.consensus} ({data.liveData.strategySummary.avgConfidence}%)
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {data.liveData.strategySignals.map((sig, idx) => {
+                  const isBuy = sig.signal === 'BUY';
+                  const isSell = sig.signal === 'SELL';
+                  return (
+                    <div key={idx} className="flex items-start gap-3 rounded-lg bg-slate-800/50 p-3">
+                      <div className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-full',
+                        isBuy ? 'bg-green-500/20' : isSell ? 'bg-red-500/20' : 'bg-slate-500/20'
+                      )}>
+                        {isBuy ? <TrendingUp className="h-3.5 w-3.5 text-green-400" /> :
+                         isSell ? <TrendingDown className="h-3.5 w-3.5 text-red-400" /> :
+                         <Minus className="h-3.5 w-3.5 text-slate-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-200">{sig.name}</span>
+                          <span className={cn(
+                            'rounded px-1.5 py-0.5 text-[10px] font-bold',
+                            isBuy ? 'bg-green-500/15 text-green-400' :
+                            isSell ? 'bg-red-500/15 text-red-400' :
+                            'bg-slate-500/15 text-slate-400'
+                          )}>{sig.signal}</span>
+                          <span className="text-[10px] text-slate-500">{sig.confidence}%</span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500 line-clamp-2">{sig.reasoning}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Live Prompt — exact same as what DeepSeek receives */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6">
+            <button
+              onClick={() => setShowPrompt(!showPrompt)}
+              className="flex w-full items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <BookOpen className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
+                    Live AI Prompt — {data.liveData.symbol}
+                  </h2>
+                  <p className="text-[10px] text-emerald-500/70">Exact prompt sent to DeepSeek</p>
+                </div>
+              </div>
+              <span className="text-xs text-emerald-500/70">{showPrompt ? 'Hide' : 'Show'} Full Prompt</span>
+            </button>
+            {showPrompt && (
+              <pre className="mt-4 overflow-x-auto rounded-lg bg-slate-900/80 p-4 text-xs leading-relaxed text-slate-300 whitespace-pre-wrap">
+                {data.liveData.prompt}
+              </pre>
+            )}
+            {!showPrompt && (
+              <p className="mt-3 text-xs text-emerald-500/50">
+                Click to view the exact prompt being sent to DeepSeek for {data.liveData.symbol}, including live indicators and ensemble strategy signals.
+              </p>
+            )}
           </div>
-          <span className="text-xs text-slate-500">{showPrompt ? 'Hide' : 'Show'} Full Prompt</span>
-        </button>
-        {showPrompt && (
-          <pre className="mt-4 overflow-x-auto rounded-lg bg-slate-900/80 p-4 text-xs leading-relaxed text-slate-300">
-            {data.promptTemplate}
-          </pre>
-        )}
-        {!showPrompt && (
-          <p className="mt-3 text-xs text-slate-500">
-            Click to view the full system prompt sent to the DeepSeek model for every analysis.
-          </p>
-        )}
-      </div>
+        </>
+      )}
+
+      {!data.liveData && (
+        <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="h-5 w-5 text-slate-400" />
+            <p className="text-sm text-slate-400">
+              Select a symbol above to see live indicators, strategy signals, and the exact prompt sent to DeepSeek.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Technical Indicators */}
       <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">

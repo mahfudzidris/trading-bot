@@ -197,11 +197,24 @@ class TestAPIStrategy:
         assert resp.status_code == 200
         data = resp.json()
         assert "Ensemble Signals" in data["name"]
-        assert "prompt_template" in data
         assert "indicators" in data
         assert "decision_fields" in data
         assert "risk_parameters" in data
         assert "model" in data
+        assert "live_data" in data  # present but null when no symbol given
+
+    @pytest.mark.asyncio
+    async def test_get_strategy_with_symbol(self, async_client):
+        """Verify GET /api/strategy?symbol=TSLA returns live data."""
+        resp = await async_client.get("/api/strategy?symbol=TSLA")
+        assert resp.status_code == 200
+        data = resp.json()
+        ld = data["live_data"]
+        assert ld is not None
+        assert ld["symbol"] == "TSLA"
+        assert ld["prompt"] is not None
+        assert "SMA(20)" in ld["prompt"]
+        assert len(ld.get("strategy_signals", [])) == 3
 
     @pytest.mark.asyncio
     async def test_strategy_indicators(self, async_client):
@@ -258,10 +271,11 @@ class TestAPIStrategy:
 
     @pytest.mark.asyncio
     async def test_strategy_prompt_template(self, async_client):
-        """Verify prompt template contains expected indicator placeholders."""
-        resp = await async_client.get("/api/strategy")
+        """Verify prompt in live_data contains expected indicator placeholders."""
+        resp = await async_client.get("/api/strategy?symbol=AAPL")
         data = resp.json()
-        prompt = data["prompt_template"]
+        prompt = data["live_data"]["prompt"]
+        assert prompt is not None
         assert "SMA(20)" in prompt
         assert "RSI(14)" in prompt
         assert "BUY" in prompt
