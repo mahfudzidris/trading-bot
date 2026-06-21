@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
 
     # ── Model / Provider ──────────────────────────────────────────────────
-    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
 
     # ── Database ──────────────────────────────────────────────────────────
     DB_PATH: str = "data/trading.db"
