@@ -134,8 +134,8 @@ export default function StrategyPage() {
       {/* Strategy Overview */}
       <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
-            <Brain className="h-5 w-5 text-white" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
+            <Brain className="h-4 w-4 text-white" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-100">{data.name}</h2>
