@@ -344,6 +344,89 @@ async def get_daily_reports(
     return reports
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# Strategy Endpoints
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@app.get("/api/strategy")
+async def get_strategy() -> dict[str, Any]:
+    """Return the AI analysis strategy configuration, prompt, and indicators used."""
+    from ai.deepseek_analyzer import DeepSeekAnalyzer
+
+    dc, ai, broker, _ = _get_services()
+
+    # Build a sample prompt to show the template
+    sample_symbol = "AAPL"
+    sample_price = {"price": 180.50, "change_pct": 1.2, "volume": 85000000, "timestamp": datetime.utcnow().isoformat()}
+    sample_indicators = {
+        "price": 180.50,
+        "sma_20": 175.30,
+        "sma_50": 168.10,
+        "ema_20": 177.80,
+        "ema_50": 170.40,
+        "rsi_14": 62,
+        "volume": 85000000,
+    }
+    sample_prompt = ai.build_prompt(sample_symbol, sample_price, sample_indicators)
+
+    # Fetch live config from settings
+    try:
+        account = await broker.get_account()
+        buying_power = account.get("buying_power", 0)
+        cash = account.get("cash", 0)
+    except Exception:
+        buying_power = 0
+        cash = 0
+
+    return {
+        "name": "AI-Powered Technical Analysis Strategy",
+        "description": "Combines technical indicators with DeepSeek LLM reasoning to generate trading signals. In mock mode, a rule-based fallback simulates the AI decision logic.",
+        "prompt_template": sample_prompt,
+        "indicators": [
+            {"name": "SMA(20)", "description": "20-period Simple Moving Average — short-term trend direction"},
+            {"name": "SMA(50)", "description": "50-period Simple Moving Average — medium-term trend direction"},
+            {"name": "EMA(20)", "description": "20-period Exponential Moving Average — fast, price-sensitive trend"},
+            {"name": "EMA(50)", "description": "50-period Exponential Moving Average — slower, smoother trend"},
+            {"name": "RSI(14)", "description": "14-period Relative Strength Index — overbought (>70) / oversold (<30) oscillator"},
+            {"name": "Volume", "description": "Trading volume — confirms momentum strength"},
+        ],
+        "decision_fields": {
+            "action": "BUY | SELL | HOLD",
+            "confidence": "0-100 — how confident the AI is",
+            "reasoning": "Natural language explanation of the decision",
+            "take_profit": "Price target for profit taking",
+            "stop_loss": "Stop-loss price to limit downside",
+            "position_size_pct": "Percentage of capital to deploy (0.0 - 0.1 = 10%)",
+        },
+        "mock_fallback_logic": [
+            "RSI < 30 → BUY (oversold)",
+            "RSI > 70 → SELL (overbought)",
+            "Price above rising SMA(20) & SMA(50) → bullish trend confirmation",
+            "Price below falling SMA(20) & SMA(50) → bearish trend confirmation",
+            "Above-average volume → momentum confirmation (+5 confidence)",
+            "Below-average volume → low conviction (-5 confidence)",
+        ],
+        "risk_parameters": {
+            "max_position_size_pct": settings.TRADE_MAX_POSITION_SIZE,
+            "stop_loss_pct": settings.TRADE_STOP_LOSS_PCT,
+            "take_profit_pct": settings.TRADE_TAKE_PROFIT_PCT,
+            "symbols_tracked": settings.SYMBOLS,
+            "mock_mode": settings.MOCK_MODE,
+        },
+        "account": {
+            "buying_power": buying_power,
+            "cash": cash,
+        },
+        "model": {
+            "provider": "DeepSeek",
+            "model_name": settings.DEEPSEEK_MODEL,
+            "temperature": 0.3,
+            "max_tokens": 512,
+        },
+    }
+
+
 @app.get("/api/analyze/{symbol}")
 async def analyze_symbol(symbol: str) -> dict[str, Any]:
     """Run an AI analysis on a single symbol without executing a trade."""
