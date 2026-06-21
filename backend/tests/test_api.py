@@ -187,6 +187,99 @@ class TestAPIPerformance:
         assert data["period_days"] == 10
 
 
+class TestAPIStrategy:
+    """Tests for GET /api/strategy."""
+
+    @pytest.mark.asyncio
+    async def test_get_strategy(self, async_client):
+        """Verify GET /api/strategy returns strategy configuration."""
+        resp = await async_client.get("/api/strategy")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "AI-Powered Technical Analysis Strategy"
+        assert "prompt_template" in data
+        assert "indicators" in data
+        assert "decision_fields" in data
+        assert "risk_parameters" in data
+        assert "model" in data
+
+    @pytest.mark.asyncio
+    async def test_strategy_indicators(self, async_client):
+        """Verify strategy returns all 6 expected technical indicators."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        indicators = data["indicators"]
+        assert len(indicators) == 6
+        names = [i["name"] for i in indicators]
+        assert "SMA(20)" in names
+        assert "SMA(50)" in names
+        assert "EMA(20)" in names
+        assert "EMA(50)" in names
+        assert "RSI(14)" in names
+        assert "Volume" in names
+
+    @pytest.mark.asyncio
+    async def test_strategy_risk_parameters(self, async_client):
+        """Verify strategy returns risk parameters with expected keys."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        risk = data["risk_parameters"]
+        assert "max_position_size_pct" in risk
+        assert "stop_loss_pct" in risk
+        assert "take_profit_pct" in risk
+        assert "symbols_tracked" in risk
+        assert "mock_mode" in risk
+        assert isinstance(risk["symbols_tracked"], list)
+        assert len(risk["symbols_tracked"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_strategy_decision_fields(self, async_client):
+        """Verify strategy returns decision fields for BUY/SELL/HOLD."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        fields = data["decision_fields"]
+        assert "action" in fields
+        assert "confidence" in fields
+        assert "reasoning" in fields
+        assert "take_profit" in fields
+        assert "stop_loss" in fields
+        assert "position_size_pct" in fields
+
+    @pytest.mark.asyncio
+    async def test_strategy_model_info(self, async_client):
+        """Verify strategy returns model configuration."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        model = data["model"]
+        assert model["provider"] == "DeepSeek"
+        assert "model_name" in model
+        assert "temperature" in model
+        assert "max_tokens" in model
+
+    @pytest.mark.asyncio
+    async def test_strategy_prompt_template(self, async_client):
+        """Verify prompt template contains expected indicator placeholders."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        prompt = data["prompt_template"]
+        assert "SMA(20)" in prompt
+        assert "RSI(14)" in prompt
+        assert "BUY" in prompt
+        assert "SELL" in prompt
+        assert "HOLD" in prompt
+        assert "position_size_pct" in prompt
+
+    @pytest.mark.asyncio
+    async def test_strategy_mock_fallback(self, async_client):
+        """Verify mock fallback logic is present when in mock mode."""
+        resp = await async_client.get("/api/strategy")
+        data = resp.json()
+        fallback = data["mock_fallback_logic"]
+        assert isinstance(fallback, list)
+        assert len(fallback) > 0
+        assert any("RSI" in rule for rule in fallback)
+
+
 class TestAPIBacktest:
     """Tests for backtest endpoints."""
 
