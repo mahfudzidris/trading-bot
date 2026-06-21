@@ -196,7 +196,7 @@ class TestAPIStrategy:
         resp = await async_client.get("/api/strategy")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["name"] == "AI-Powered Technical Analysis Strategy"
+        assert "Ensemble Signals" in data["name"]
         assert "prompt_template" in data
         assert "indicators" in data
         assert "decision_fields" in data

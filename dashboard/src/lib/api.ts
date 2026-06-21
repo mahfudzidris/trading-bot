@@ -309,6 +309,8 @@ export async function analyzeSymbol(symbol: string): Promise<Analysis> {
     stopLoss: (dec.stopLoss as number) ?? (dec.stop_loss as number) ?? 0,
     positionSizePct: (dec.positionSizePct as number) ?? (dec.position_size_pct as number) ?? 0,
     currentPrice: (price.price as number) ?? 0,
+    strategySignals: (raw.strategySignals as any[]) ?? (raw.strategy_signals as any[]) ?? [],
+    strategySummary: (raw.strategySummary as any) ?? (raw.strategy_summary as any) ?? null,
   };
 }
 

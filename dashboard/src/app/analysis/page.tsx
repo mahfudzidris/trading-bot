@@ -15,6 +15,12 @@ import StatusBadge from '@/components/StatusBadge';
 import { analyzeSymbol, fetchTrades, fetchAccount, executeTrade } from '@/lib/api';
 import type { Analysis, Trade } from '@/types';
 import { cn } from '@/lib/utils';
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown,
+  Minus,
+  Layers,
+} from 'lucide-react';
 
 const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
 
@@ -22,6 +28,8 @@ export default function AnalysisPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
+  const [strategySignals, setStrategySignals] = useState<any[]>([]);
+  const [strategySummary, setStrategySummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -36,6 +44,8 @@ export default function AnalysisPage() {
         fetchTrades({ symbol, limit: 5, page: 1 }),
       ]);
       setAnalysis(analysisData);
+      setStrategySignals(analysisData.strategySignals ?? []);
+      setStrategySummary(analysisData.strategySummary ?? null);
       setRecentTrades(tradesData?.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analysis');
@@ -183,6 +193,65 @@ export default function AnalysisPage() {
               </div>
             )}
           </div>
+
+          {/* Strategy Signals (Ensemble) */}
+          {!loading && strategySignals.length > 0 && (
+            <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-indigo-400" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                    Strategy Signals
+                  </h2>
+                </div>
+                {strategySummary && (
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-[10px] font-bold',
+                    strategySummary.consensus === 'BUY' ? 'bg-green-500/20 text-green-400' :
+                    strategySummary.consensus === 'SELL' ? 'bg-red-500/20 text-red-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  )}>
+                    Consensus: {strategySummary.consensus} ({strategySummary.avgConfidence}%)
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {strategySignals.map((sig: any, idx: number) => {
+                  const isBuy = sig.signal === 'BUY';
+                  const isSell = sig.signal === 'SELL';
+                  return (
+                    <div key={idx} className="flex items-start gap-3 rounded-lg bg-slate-800/50 p-3">
+                      <div className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-full',
+                        isBuy ? 'bg-green-500/20' : isSell ? 'bg-red-500/20' : 'bg-slate-500/20'
+                      )}>
+                        {isBuy ? <TrendingUpIcon className="h-3.5 w-3.5 text-green-400" /> :
+                         isSell ? <TrendingDown className="h-3.5 w-3.5 text-red-400" /> :
+                         <Minus className="h-3.5 w-3.5 text-slate-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-200">{sig.name}</span>
+                          <span className={cn(
+                            'rounded px-1.5 py-0.5 text-[10px] font-bold',
+                            isBuy ? 'bg-green-500/15 text-green-400' :
+                            isSell ? 'bg-red-500/15 text-red-400' :
+                            'bg-slate-500/15 text-slate-400'
+                          )}>
+                            {sig.signal}
+                          </span>
+                          <span className="text-[10px] text-slate-500">{sig.confidence}%</span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500 line-clamp-2">
+                          {sig.reasoning}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Recent recommendations / trades for this symbol */}
           <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">

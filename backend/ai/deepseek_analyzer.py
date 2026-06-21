@@ -35,8 +35,20 @@ class DeepSeekAnalyzer:
         symbol: str,
         price_data: dict[str, Any],
         indicators: dict[str, Any],
+        strategy_signals: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Run a full AI analysis on *symbol* and return a trade decision dict.
+
+        Parameters
+        ----------
+        symbol : str
+            Ticker symbol (e.g. "AAPL").
+        price_data : dict
+            Price, change_pct, volume, timestamp.
+        indicators : dict
+            Technical indicators (SMA, EMA, RSI, etc.).
+        strategy_signals : list[dict] | None
+            Optional pre-computed signals from EnsembleStrategy.
 
         Returns
         -------
@@ -45,9 +57,9 @@ class DeepSeekAnalyzer:
             position_size_pct.
         """
         if self.mock_mode:
-            return self._mock_decision(symbol, price_data, indicators)
+            return self._mock_decision(symbol, price_data, indicators, strategy_signals)
 
-        prompt = self.build_prompt(symbol, price_data, indicators)
+        prompt = self.build_prompt(symbol, price_data, indicators, strategy_signals)
         response_text = await self._call_deepseek(prompt)
         return self._parse_response(response_text, symbol, price_data, indicators)
 
@@ -90,9 +102,14 @@ class DeepSeekAnalyzer:
         symbol: str,
         price_data: dict[str, Any],
         indicators: dict[str, Any],
+        strategy_signals: list[dict[str, Any]] | None = None,
     ) -> str:
-        """Construct the detailed prompt sent to DeepSeek."""
-        return f"""You are an expert quantitative trader. Analyse the following data for {symbol} and decide whether to BUY, SELL, or HOLD.
+        """Construct the detailed prompt sent to DeepSeek.
+
+        If *strategy_signals* is provided (list of dicts from EnsembleStrategy),
+        they are injected as extra context so the AI can weigh each strategy.
+        """
+        prompt = f"""You are an expert quantitative trader. Analyse the following data for {symbol} and decide whether to BUY, SELL, or HOLD.
 
 === PRICE DATA ===
 Price: ${indicators.get('price', price_data.get('price', 'N/A'))}
@@ -108,17 +125,32 @@ RSI(14): {indicators.get('rsi_14', 'N/A')}
 
 === MARKET CONTEXT ===
 Current time: {price_data.get('timestamp', 'now')}
+"""
 
+        if strategy_signals:
+            prompt += "\n=== STRATEGY SIGNALS ===\n"
+            for i, sig in enumerate(strategy_signals, 1):
+                prompt += f"{i}. {sig.get('name', 'Strategy')}: {sig.get('signal', 'HOLD')} (conf: {sig.get('confidence', 0)}) — {sig.get('reasoning', '')}\n"
+
+            prompt += f"""
+These are individual strategy signals. Evaluate them critically:
+- Some may agree, others may conflict — use your judgment.
+- Consider market context (volume, volatility) to decide which signals are reliable.
+- Do NOT simply follow the majority vote; reason from first principles.
+"""
+
+        prompt += """
 Return your analysis as a JSON object with these fields:
 - "action": "BUY" | "SELL" | "HOLD"
 - "confidence": integer 0-100
 - "reasoning": a brief explanation of your decision
 - "take_profit": price target for profit taking (or 0 if HOLD)
 - "stop_loss": stop-loss price (or 0 if HOLD)
-- "position_size_pct": percentage of capital to deploy (0.0 - {0.1})
+- "position_size_pct": percentage of capital to deploy (0.0 - 0.1)
 
 Output ONLY the JSON object, nothing else.
 """
+        return prompt
 
     # ──────────────────────────────────────────────────────────────────────
     # internal: mock decisions
@@ -129,6 +161,7 @@ Output ONLY the JSON object, nothing else.
         symbol: str,
         price_data: dict[str, Any],
         indicators: dict[str, Any],
+        strategy_signals: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         price = indicators.get("price", price_data.get("price", 100.0))
         rsi = indicators.get("rsi_14", 50)
@@ -141,14 +174,36 @@ Output ONLY the JSON object, nothing else.
         confidence: int = 50
         reasoning_parts: list[str] = []
 
-        # RSI-based signals
+        # If strategy signals are available, use them to inform the mock
+        if strategy_signals:
+            votes: dict[str, int] = {"BUY": 0, "SELL": 0, "HOLD": 0}
+            total_conf = 0
+            for sig in strategy_signals:
+                votes[sig.get("signal", "HOLD")] = votes.get(sig.get("signal", "HOLD"), 0) + 1
+                total_conf += sig.get("confidence", 0)
+            avg_conf = total_conf // len(strategy_signals)
+
+            # Consensus from strategies
+            non_hold = {k: v for k, v in votes.items() if k != "HOLD"}
+            if non_hold:
+                max_vote = max(non_hold.values())
+                leaders = [k for k, v in non_hold.items() if v == max_vote]
+                if len(leaders) == 1:
+                    action = leaders[0]
+                    confidence = min(95, avg_conf + 5)
+                    reasoning_parts.append(f"Ensemble consensus: {action} ({votes[action]}/{len(strategy_signals)} strategies)")
+
+            reasoning_parts.append(f"Strategy votes: {dict(votes)}, avg conf: {avg_conf}%")
+
+        # RSI-based signals (still used for refinement)
         if rsi < 30:
             action = "BUY"
-            confidence += 20
+            confidence = max(confidence, 70)
             reasoning_parts.append(f"RSI at {rsi:.1f} suggests oversold conditions")
         elif rsi > 70:
-            action = "SELL"
-            confidence += 20
+            if action != "BUY":  # don't override ensemble BUY
+                action = "SELL"
+            confidence = max(confidence, 70)
             reasoning_parts.append(f"RSI at {rsi:.1f} suggests overbought conditions")
 
         # Moving average crossover

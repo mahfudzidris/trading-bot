@@ -53,6 +53,8 @@ export interface Analysis {
   stopLoss: number;
   positionSizePct: number;
   currentPrice: number;
+  strategySignals?: any[];
+  strategySummary?: any;
 }
 
 export interface Performance {

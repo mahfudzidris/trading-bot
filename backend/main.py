@@ -380,8 +380,8 @@ async def get_strategy() -> dict[str, Any]:
         cash = 0
 
     return {
-        "name": "AI-Powered Technical Analysis Strategy",
-        "description": "Combines technical indicators with DeepSeek LLM reasoning to generate trading signals. In mock mode, a rule-based fallback simulates the AI decision logic.",
+        "name": "AI-Powered Technical Analysis Strategy with Ensemble Signals",
+        "description": "Combines 3 algorithmic strategies (Trend Following, Mean Reversion, Momentum) with DeepSeek LLM reasoning. Each strategy independently analyses indicators and produces a signal. The AI then acts as a meta-analyzer, weighing all strategy signals alongside raw market data to produce the final decision. In mock mode, the ensemble consensus primarily drives the decision with RSI/MA refinement.",
         "prompt_template": sample_prompt,
         "indicators": [
             {"name": "SMA(20)", "description": "20-period Simple Moving Average — short-term trend direction"},
@@ -399,13 +399,28 @@ async def get_strategy() -> dict[str, Any]:
             "stop_loss": "Stop-loss price to limit downside",
             "position_size_pct": "Percentage of capital to deploy (0.0 - 0.1 = 10%)",
         },
+        "ensemble_strategies": [
+            {
+                "name": "Trend Following",
+                "inputs": ["SMA(20)", "SMA(50)", "Price"],
+                "logic": "BUY if price > SMA(20) > SMA(50); SELL if price < SMA(20) < SMA(50); confidence scales with SMA gap",
+            },
+            {
+                "name": "Mean Reversion",
+                "inputs": ["RSI(14)"],
+                "logic": "BUY when RSI < 35 (oversold bounce); SELL when RSI > 65 (overbought drop); confidence scales with distance from neutral (50)",
+            },
+            {
+                "name": "Momentum",
+                "inputs": ["Price Change %", "SMA(20) gap", "Volume"],
+                "logic": "Composite momentum score combining daily change % and price vs SMA(20). BUY/SELL when momentum exceeds 2.0σ; volume confirms confidence",
+            },
+        ],
         "mock_fallback_logic": [
-            "RSI < 30 → BUY (oversold)",
-            "RSI > 70 → SELL (overbought)",
-            "Price above rising SMA(20) & SMA(50) → bullish trend confirmation",
-            "Price below falling SMA(20) & SMA(50) → bearish trend confirmation",
-            "Above-average volume → momentum confirmation (+5 confidence)",
-            "Below-average volume → low conviction (-5 confidence)",
+            "Ensemble consensus determines primary action (majority vote of 3 strategies)",
+            "RSI extremes refine the action if ensemble is split",
+            "MA crossover confirms trend direction",
+            "Above-average volume adjusts confidence ±5-10",
         ],
         "risk_parameters": {
             "max_position_size_pct": settings.TRADE_MAX_POSITION_SIZE,
@@ -429,7 +444,13 @@ async def get_strategy() -> dict[str, Any]:
 
 @app.get("/api/analyze/{symbol}")
 async def analyze_symbol(symbol: str) -> dict[str, Any]:
-    """Run an AI analysis on a single symbol without executing a trade."""
+    """Run an AI analysis on a single symbol without executing a trade.
+
+    Now uses ensemble strategy signals (Trend, Mean Reversion, Momentum)
+    as extra context for the DeepSeek AI model.
+    """
+    from strategies import EnsembleStrategy
+
     dc, ai, _, _ = _get_services()
 
     symbol = symbol.upper()
@@ -443,7 +464,13 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
         "timestamp": quote.get("timestamp", ""),
     }
 
-    decision = await ai.analyze_market(symbol, price_data, indicators)
+    # ── New: run ensemble strategy signals ──
+    ensemble = EnsembleStrategy()
+    signals = ensemble.analyze(indicators)
+    strategy_summary = ensemble.get_summary(signals)
+    signals_dicts = [s.to_dict() for s in signals]
+
+    decision = await ai.analyze_market(symbol, price_data, indicators, signals_dicts)
 
     return {
         "symbol": symbol,
@@ -458,6 +485,8 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
             "volume": indicators.get("volume"),
         },
         "decision": decision,
+        "strategy_signals": signals_dicts,
+        "strategy_summary": strategy_summary,
     }
 
 

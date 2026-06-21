@@ -13,6 +13,7 @@ import {
   Zap,
   BookOpen,
   Cpu,
+  Layers,
 } from 'lucide-react';
 import { fetchStrategy } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ interface StrategyData {
   promptTemplate: string;
   indicators: Indicator[];
   decisionFields: Record<string, string>;
+  ensembleStrategies?: { name: string; inputs: string[]; logic: string }[];
   mockFallbackLogic: string[];
   riskParameters: RiskParams;
   account: { buyingPower: number; cash: number };
@@ -268,6 +270,55 @@ export default function StrategyPage() {
           </table>
         </div>
       </div>
+
+      {/* Ensemble Strategies */}
+      {data.ensembleStrategies && data.ensembleStrategies.length > 0 && (
+        <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
+              <Layers className="h-4 w-4 text-indigo-400" />
+            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Ensemble Strategies
+            </h2>
+          </div>
+          <p className="mb-4 text-xs text-slate-500">
+            3 algorithmic strategies run in parallel. Each produces an independent signal. The AI acts as a meta-analyzer, weighing all signals alongside raw data to produce the final decision.
+          </p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {data.ensembleStrategies.map((strat) => (
+              <div key={strat.name} className="rounded-lg border border-slate-700/30 bg-slate-800/50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={cn(
+                    'flex h-6 w-6 items-center justify-center rounded-full',
+                    strat.name === 'Trend Following' ? 'bg-blue-500/20' :
+                    strat.name === 'Mean Reversion' ? 'bg-amber-500/20' :
+                    'bg-purple-500/20'
+                  )}>
+                    <span className={cn(
+                      'text-[10px] font-bold',
+                      strat.name === 'Trend Following' ? 'text-blue-400' :
+                      strat.name === 'Mean Reversion' ? 'text-amber-400' :
+                      'text-purple-400'
+                    )}>
+                      {strat.name === 'Trend Following' ? 'TF' : strat.name === 'Mean Reversion' ? 'MR' : 'MO'}
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-200">{strat.name}</span>
+                </div>
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {strat.inputs.map((input: string) => (
+                    <span key={input} className="rounded bg-slate-700/50 px-1.5 py-0.5 text-[10px] font-mono text-slate-400">
+                      {input}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-500">{strat.logic}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mock Fallback Logic */}
       {data.riskParameters.mockMode && (
