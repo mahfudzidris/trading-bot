@@ -12,14 +12,14 @@ import {
 } from 'lucide-react';
 import AiRecommendation from '@/components/AiRecommendation';
 import StatusBadge from '@/components/StatusBadge';
-import { analyzeSymbol, fetchTrades } from '@/lib/api';
+import { analyzeSymbol, fetchTrades, fetchAccount, executeTrade } from '@/lib/api';
 import type { Analysis, Trade } from '@/types';
 import { cn } from '@/lib/utils';
 
-const SYMBOLS = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'];
+const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
 
 export default function AnalysisPage() {
-  const [selectedSymbol, setSelectedSymbol] = useState('BTC/USD');
+  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function AnalysisPage() {
         fetchTrades({ symbol, limit: 5, page: 1 }),
       ]);
       setAnalysis(analysisData);
-      setRecentTrades(tradesData.data);
+      setRecentTrades(tradesData?.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analysis');
     } finally {
@@ -56,10 +56,29 @@ export default function AnalysisPage() {
   const handleExecute = async () => {
     if (!analysis || analysis.action === 'hold') return;
     setExecuting(true);
-    // Simulate execution
-    await new Promise((r) => setTimeout(r, 1500));
-    setExecuting(false);
-    handleRefresh();
+    setError(null);
+    try {
+      // Calculate position size based on AI recommendation
+      const account = await fetchAccount();
+      const positionValue = (analysis.positionSizePct / 100) * account.buyingPower;
+      const qty = Math.max(1, Math.floor(positionValue / analysis.currentPrice));
+
+      await executeTrade({
+        symbol: selectedSymbol,
+        side: analysis.action.toUpperCase(),
+        qty,
+        ai_reasoning: analysis.reasoning,
+        ai_confidence: analysis.confidence,
+        stop_loss: analysis.stopLoss,
+        take_profit: analysis.takeProfit,
+      });
+
+      handleRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to execute trade');
+    } finally {
+      setExecuting(false);
+    }
   };
 
   const marketIndicators = analysis

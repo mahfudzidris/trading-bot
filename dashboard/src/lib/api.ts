@@ -11,8 +11,7 @@ import type {
   BacktestResult,
 } from '@/types';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BASE_URL = '';
 
 class ApiError extends Error {
   status: number;
@@ -23,9 +22,28 @@ class ApiError extends Error {
   }
 }
 
+// ── CamelCase converter for API snake_case responses ──────────────
+
+function camelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function camelCaseKeys<T>(obj: unknown): T {
+  if (Array.isArray(obj)) return obj.map(camelCaseKeys) as T;
+  if (obj !== null && typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[camelCase(key)] = camelCaseKeys(value);
+    }
+    return result as T;
+  }
+  return obj as T;
+}
+
 async function request<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
+  keepSnakeCase?: boolean
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   try {
@@ -39,7 +57,12 @@ async function request<T>(
         res.status
       );
     }
-    return (await res.json()) as T;
+    const data = await res.json();
+    // Backtest API returns snake_case — skip conversion for those endpoints
+    if (keepSnakeCase || endpoint.startsWith('/api/backtest/')) {
+      return data as T;
+    }
+    return camelCaseKeys(data) as T;
   } catch (err) {
     if (err instanceof ApiError) throw err;
     if (err instanceof TypeError && err.message === 'Failed to fetch') {
@@ -203,7 +226,7 @@ function getMockData<T>(endpoint: string, _options?: RequestInit): T {
       currentPrice: randomPrice(50000),
     } as T;
   }
-  if (endpoint === '/api/analysis/run') {
+  if (endpoint === '/api/run-analysis') {
     return { success: true, message: 'Daily analysis completed successfully. 3 trade signals generated.' } as T;
   }
 
@@ -213,7 +236,13 @@ function getMockData<T>(endpoint: string, _options?: RequestInit): T {
 // ── Exported API Functions ────────────────────────────────────────
 
 export async function fetchAccount(): Promise<Account> {
-  return request<Account>('/api/account');
+  const raw = await request<Record<string, unknown>>('/api/account');
+  return {
+    balance: (raw.balance as number) ?? 0,
+    buyingPower: (raw.buyingPower as number) ?? 0,
+    totalPnl: (raw.pnl as number) ?? (raw.totalPnl as number) ?? 0,
+    dayPnl: (raw.dayPnl as number) ?? 0,
+  };
 }
 
 export async function fetchPositions(): Promise<Position[]> {
@@ -232,11 +261,31 @@ export async function fetchTrades(
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.limit) params.set('limit', String(filters.limit));
   const qs = params.toString();
-  return request<PaginatedResponse<Trade>>(`/api/trades${qs ? `?${qs}` : ''}`);
+  const res = await request<Trade[] | PaginatedResponse<Trade>>(`/api/trades${qs ? `?${qs}` : ''}`);
+  // API returns array directly; wrap it in PaginatedResponse
+  if (Array.isArray(res)) {
+    return { data: res, total: res.length, page: 1, limit: res.length, totalPages: 1 };
+  }
+  return res;
 }
 
 export async function fetchDailyReports(): Promise<DailyReport[]> {
   return request<DailyReport[]>('/api/daily-reports');
+}
+
+export async function executeTrade(data: {
+  symbol: string;
+  side: string;
+  qty: number;
+  ai_reasoning?: string;
+  ai_confidence?: number;
+  stop_loss?: number;
+  take_profit?: number;
+}): Promise<{ ok: boolean; order: any; trade: any }> {
+  return request('/api/trade/execute', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function fetchPerformance(): Promise<Performance> {
@@ -244,13 +293,31 @@ export async function fetchPerformance(): Promise<Performance> {
 }
 
 export async function analyzeSymbol(symbol: string): Promise<Analysis> {
-  return request<Analysis>(`/api/analyze/${symbol}`);
+  const raw = await request<Record<string, unknown>>(`/api/analyze/${symbol}`);
+  const dec = (raw.decision as Record<string, unknown>) ?? {};
+  const price = (raw.priceData as Record<string, unknown>) ?? {};
+  return {
+    symbol: symbol,
+    action: ((dec.action as string) ?? 'hold').toLowerCase() as 'buy' | 'sell' | 'hold',
+    confidence: (dec.confidence as number) ?? 0,
+    reasoning: (dec.reasoning as string) ?? '',
+    takeProfit: (dec.takeProfit as number) ?? (dec.take_profit as number) ?? 0,
+    stopLoss: (dec.stopLoss as number) ?? (dec.stop_loss as number) ?? 0,
+    positionSizePct: (dec.positionSizePct as number) ?? (dec.position_size_pct as number) ?? 0,
+    currentPrice: (price.price as number) ?? 0,
+  };
 }
 
 export async function runAnalysis(): Promise<{ success: boolean; message: string }> {
-  return request<{ success: boolean; message: string }>('/api/analysis/run', {
+  const raw = await request<Record<string, unknown>>('/api/run-analysis', {
     method: 'POST',
   });
+  const pnl = (raw.totalPnl ?? 0) as number;
+  const trades = (raw.tradesExecuted ?? 0) as number;
+  return {
+    success: true,
+    message: `Daily analysis completed. ${trades} trade(s) executed, PnL: $${pnl.toFixed(2)}`,
+  };
 }
 
 // ── Backtest API Functions ────────────────────────────────────────────────

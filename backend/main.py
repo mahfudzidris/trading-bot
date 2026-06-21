@@ -9,8 +9,10 @@ from datetime import datetime, timedelta, date as date_type
 from typing import Any
 from enum import Enum
 
-from fastapi import FastAPI, Depends, Query, HTTPException
+import traceback
+from fastapi import FastAPI, Depends, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
@@ -25,6 +27,17 @@ from backtest.engine import BacktestEngine
 from pydantic import BaseModel
 
 # ── Request models ─────────────────────────────────────────────────────────
+
+
+class ExecuteTradeRequest(BaseModel):
+    symbol: str
+    side: str  # "BUY" or "SELL"
+    qty: int
+    ai_reasoning: str | None = None
+    ai_confidence: float | None = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
+    strategy: str = "manual"
 
 
 class BacktestRequest(BaseModel):
@@ -121,11 +134,21 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://100.108.97.116:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Global exception handler to log tracebacks ─────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -355,6 +378,54 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
     }
 
 
+@app.post("/api/trade/execute")
+async def execute_trade(
+    req: ExecuteTradeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Execute a manual buy/sell trade on Alpaca based on AI recommendation."""
+    _, _, broker, _ = _get_services()
+
+    # ── Place order on Alpaca ──
+    order = await broker.place_market_order(req.symbol.upper(), req.qty, req.side.upper())
+
+    if order.get("status") == "FAILED":
+        raise HTTPException(status_code=500, detail=order.get("error", "Order execution failed"))
+
+    # ── Save trade to local DB ──
+    trade_data = {
+        "symbol": req.symbol.upper(),
+        "side": req.side.upper(),
+        "qty": req.qty,
+        "entry_price": order.get("filled_avg_price", 0),
+        "stop_loss": req.stop_loss,
+        "take_profit": req.take_profit,
+        "strategy": req.strategy,
+        "ai_reasoning": req.ai_reasoning,
+        "ai_confidence": req.ai_confidence,
+    }
+    trade = await crud.create_trade(db, trade_data)
+
+    # ── Sync positions from Alpaca ──
+    try:
+        positions = await broker.get_positions()
+        for pos in positions:
+            await crud.update_position(
+                db,
+                {
+                    "symbol": pos["symbol"],
+                    "qty": pos["qty"],
+                    "avg_entry_price": pos.get("avg_entry_price", 0),
+                    "current_price": pos.get("current_price", pos.get("market_value", 0) / max(pos["qty"], 1)),
+                    "unrealized_pnl": pos.get("unrealized_pl", 0),
+                },
+            )
+    except Exception as exc:
+        logger.warning("Failed to sync positions after trade: %s", exc)
+
+    return {"ok": True, "order": order, "trade": trade}
+
+
 @app.post("/api/run-analysis")
 async def trigger_daily_analysis(
     db: AsyncSession = Depends(get_db),
@@ -396,8 +467,15 @@ async def run_backtest_endpoint(
     req: BacktestRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Run a full backtest with the given parameters."""
-    dc, ai, _, _ = _get_services()
+    """Run a full backtest with the given parameters.
+
+    Always uses internal mock-mode clients so backtesting is fast and
+    never consumes real API quota, even when MOCK_MODE=false in .env.
+    """
+    # Always use mock mode for backtest — live market data / real AI calls
+    # are unnecessary for historical simulation.
+    dc = TwelveDataClient(api_key="backtest", mock_mode=True)
+    ai = DeepSeekAnalyzer(api_key="backtest", mock_mode=True)
 
     strategy_params = {
         "stop_loss_pct": req.stop_loss_pct,
@@ -434,6 +512,9 @@ async def run_backtest_endpoint(
     except Exception as exc:
         logger.exception("Backtest failed")
         raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        await dc.close()
+        await ai.close()
 
 
 @app.get("/api/backtest/results", response_model=list[dict[str, Any]])
