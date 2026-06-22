@@ -102,3 +102,49 @@ class TestDeepSeekAnalyzer:
     async def test_close(self, mock_deepseek_analyzer):
         """Verify close method works."""
         await mock_deepseek_analyzer.close()
+
+
+class TestDeepSeekSentiment:
+    """Tests for DeepSeekAnalyzer with market sentiment data."""
+
+    @pytest.mark.asyncio
+    async def test_analyze_market_with_sentiment(self, mock_deepseek_analyzer):
+        """Verify analyze_market works with market_sentiment data."""
+        price_data = {"price": 180.0, "change_pct": 1.5, "volume": 10_000_000, "timestamp": "now"}
+        indicators = {"price": 180.0, "sma_20": 178.0, "sma_50": 175.0, "ema_20": 179.0, "ema_50": 176.0, "rsi_14": 55, "volume": 10_000_000}
+        sentiment = {
+            "polymarket": [{"question": "Will SPX close > $7,500?", "probability": 0.28, "volume": 31000}],
+            "fear_greed": {"score": 42, "label": "Fear", "previous_close": 38},
+            "news": {"score": -0.15, "label": "Neutral", "headline_count": 20, "top_headlines": ["Fed cautious on rates"]},
+            "composite_label": "Bearish",
+            "composite_bias": -0.25,
+        }
+        decision = await mock_deepseek_analyzer.analyze_market("AAPL", price_data, indicators, market_sentiment=sentiment)
+        assert isinstance(decision, dict)
+        assert decision["action"] in ("BUY", "SELL", "HOLD")
+        assert "sentiment" in decision.get("reasoning", "").lower() or "fear" in decision.get("reasoning", "").lower()
+
+    def test_build_prompt_with_sentiment(self, mock_deepseek_analyzer):
+        """Verify build_prompt includes MARKET SENTIMENT section."""
+        price_data = {"price": 180.0, "change_pct": 1.2, "volume": 10_000_000, "timestamp": "now"}
+        indicators = {"price": 180.0, "sma_20": 178.0, "sma_50": 175.0, "ema_20": 179.0, "ema_50": 176.0, "rsi_14": 55, "volume": 10_000_000}
+        sentiment = {
+            "polymarket": [{"question": "Will SPX close > $7,500?", "probability": 0.28, "volume": 31000}],
+            "fear_greed": {"score": 42, "label": "Fear", "previous_close": 38},
+            "news": {"score": -0.15, "label": "Neutral", "headline_count": 20, "top_headlines": ["Fed cautious on rates"]},
+            "composite_label": "Bearish",
+            "composite_bias": -0.25,
+        }
+        prompt = mock_deepseek_analyzer.build_prompt("AAPL", price_data, indicators, market_sentiment=sentiment)
+        assert "MARKET SENTIMENT" in prompt
+        assert "Fear & Greed Index" in prompt
+        assert "Prediction Markets" in prompt
+        assert "Composite Market Sentiment" in prompt
+        assert "Bearish" in prompt
+
+    def test_build_prompt_sentiment_not_included_when_none(self, mock_deepseek_analyzer):
+        """Verify MARKET SENTIMENT section is absent when sentiment is None."""
+        price_data = {"price": 180.0, "change_pct": 1.2, "volume": 10_000_000, "timestamp": "now"}
+        indicators = {"price": 180.0, "sma_20": 178.0, "sma_50": 175.0, "ema_20": 179.0, "ema_50": 176.0, "rsi_14": 55, "volume": 10_000_000}
+        prompt = mock_deepseek_analyzer.build_prompt("AAPL", price_data, indicators)
+        assert "MARKET SENTIMENT" not in prompt

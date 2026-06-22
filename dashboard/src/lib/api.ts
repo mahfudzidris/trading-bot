@@ -312,6 +312,7 @@ export async function analyzeSymbol(symbol: string): Promise<Analysis> {
     currentPrice: (price.price as number) ?? 0,
     strategySignals: (raw.strategySignals as any[]) ?? (raw.strategy_signals as any[]) ?? [],
     strategySummary: (raw.strategySummary as any) ?? (raw.strategy_summary as any) ?? null,
+    marketSentiment: (raw.marketSentiment as any) ?? (raw.market_sentiment as any) ?? undefined,
   };
 }
 

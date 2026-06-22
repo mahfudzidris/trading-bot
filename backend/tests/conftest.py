@@ -21,6 +21,10 @@ from data.twelvedata_client import TwelveDataClient
 from ai.deepseek_analyzer import DeepSeekAnalyzer
 from broker.alpaca_client import AlpacaClient
 from strategy.engine import StrategyEngine
+from sentiment.polymarket_client import PolymarketClient
+from sentiment.fear_greed_client import FearGreedClient
+from sentiment.news_client import NewsClient
+from sentiment.sentiment_aggregator import SentimentAggregator
 from db.models import Base
 
 # ── pytest plugins ──────────────────────────────────────────────────────────
@@ -96,6 +100,33 @@ async def mock_strategy_engine(
     )
 
 
+# ── Sentiment Fixtures ──────────────────────────────────────────────
+
+
+@pytest_asyncio.fixture
+async def mock_polymarket_client() -> PolymarketClient:
+    """Return a PolymarketClient in mock mode."""
+    return PolymarketClient(mock_mode=True)
+
+
+@pytest_asyncio.fixture
+async def mock_fear_greed_client() -> FearGreedClient:
+    """Return a FearGreedClient in mock mode."""
+    return FearGreedClient(mock_mode=True)
+
+
+@pytest_asyncio.fixture
+async def mock_news_client() -> NewsClient:
+    """Return a NewsClient in mock mode."""
+    return NewsClient(mock_mode=True)
+
+
+@pytest_asyncio.fixture
+async def mock_sentiment_aggregator() -> SentimentAggregator:
+    """Return a SentimentAggregator with all sub-clients in mock mode."""
+    return SentimentAggregator(mock_mode=True)
+
+
 @pytest_asyncio.fixture
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh in-memory SQLite database for each test.
@@ -128,15 +159,16 @@ async def async_client(
     mock_twelvedata_client: TwelveDataClient,
     mock_deepseek_analyzer: DeepSeekAnalyzer,
     mock_alpaca_client: AlpacaClient,
+    mock_sentiment_aggregator: SentimentAggregator,
     test_settings: Settings,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Return an httpx.AsyncClient wired to the FastAPI app via ASGITransport.
 
-    Sets the four global service instances (data_client, ai_analyzer,
-    broker_client, strategy_engine) and overrides the get_db dependency
-    so the FastAPI code uses our test_db session.
+    Sets the global service instances (data_client, ai_analyzer,
+    broker_client, strategy_engine, sentiment_aggregator) and overrides
+    the get_db dependency so the FastAPI code uses our test_db session.
     """
-    from main import app, data_client, ai_analyzer, broker_client, strategy_engine
+    from main import app, data_client, ai_analyzer, broker_client, strategy_engine, sentiment_aggregator
     from db.models import get_db
 
     # Patch globals in main
@@ -149,6 +181,7 @@ async def async_client(
         ("data_client", mock_twelvedata_client),
         ("ai_analyzer", mock_deepseek_analyzer),
         ("broker_client", mock_alpaca_client),
+        ("sentiment_aggregator", mock_sentiment_aggregator),
     ]:
         globals_backup[name] = getattr(main_module, name)
         setattr(main_module, name, val)

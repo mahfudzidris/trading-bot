@@ -58,7 +58,7 @@
         <div class="pulse-dot"></div>
         <h1>AI Trading Bot — Architecture</h1>
       </div>
-      <p class="subtitle">TwelveData → Ensemble Strategies → DeepSeek AI Meta-Analyzer → Alpaca Broker → Dashboard</p>
+      <p class="subtitle">TwelveData → Ensemble Strategies → Market Sentiment → DeepSeek AI Meta-Analyzer → Alpaca Broker → Dashboard</p>
     </div>
 
     <div class="diagram-container">
@@ -119,32 +119,32 @@
         <text x="135" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">OHLCV · SMA · EMA · RSI</text>
 
         <!-- DeepSeek AI (External) -->
-        <rect x="300" y="52" width="170" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-        <text x="385" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">DeepSeek AI</text>
-        <text x="385" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">LLM Reasoning (V4 Flash)</text>
-        <text x="385" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">Meta-Analyzer · BUY/SELL/HOLD</text>
+        <rect x="270" y="52" width="170" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="355" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">DeepSeek AI</text>
+        <text x="355" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">LLM Reasoning (V4 Flash)</text>
+        <text x="355" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">Meta-Analyzer · BUY/SELL/HOLD</text>
 
         <!-- Alpaca Broker (External) -->
-        <rect x="550" y="52" width="170" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-        <text x="635" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">Alpaca Markets</text>
-        <text x="635" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">Broker API (Paper)</text>
-        <text x="635" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">Orders · Positions · Account</text>
+        <rect x="500" y="52" width="170" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="585" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">Alpaca Markets</text>
+        <text x="585" y="88" fill="#94a3b8" font-size="9" text-anchor="middle">Broker API (Paper)</text>
+        <text x="585" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">Orders · Positions · Account</text>
 
         <!-- Local SQLite DB -->
-        <rect x="800" y="52" width="170" height="65" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
-        <text x="885" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">SQLite</text>
-        <text x="885" y="88" fill="#a78bfa" font-size="9" text-anchor="middle">Database (Local)</text>
-        <text x="885" y="104" fill="#94a3b8" font-size="8" text-anchor="middle">Trades · Reports · Backtests</text>
+        <rect x="730" y="52" width="170" height="65" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="815" y="72" fill="white" font-size="11" font-weight="600" text-anchor="middle">SQLite</text>
+        <text x="815" y="88" fill="#a78bfa" font-size="9" text-anchor="middle">Database (Local)</text>
+        <text x="815" y="104" fill="#94a3b8" font-size="8" text-anchor="middle">Trades · Reports · Backtests</text>
 
         <!-- Layer 1 connectors -->
-        <line x1="220" y1="85" x2="298" y2="85" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
-        <text x="259" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Price + Indicators</text>
+        <line x1="220" y1="85" x2="268" y2="85" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <text x="244" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Data</text>
 
-        <line x1="470" y1="85" x2="548" y2="85" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-        <text x="509" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Decision Signal</text>
+        <line x1="440" y1="85" x2="498" y2="85" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <text x="469" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Decision</text>
 
-        <line x1="720" y1="85" x2="798" y2="85" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
-        <text x="759" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Persist</text>
+        <line x1="670" y1="85" x2="728" y2="85" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <text x="699" y="79" fill="#94a3b8" font-size="7" text-anchor="middle">Persist</text>
 
         <!-- ═══════════════ LAYER 2: APPLICATION ═══════════════ -->
         <rect x="25" y="190" width="1000" height="330" rx="12" fill="url(#layerGrad2)" stroke="#22d3ee" stroke-width="0.8" stroke-dasharray="6,3"/>
@@ -176,70 +176,99 @@
         <line x1="680" y1="252" x2="738" y2="252" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
         <text x="709" y="246" fill="#94a3b8" font-size="7" text-anchor="middle">Decision</text>
 
+        <!-- ═══════════════ MARKET SENTIMENT SECTION ═══════════════ -->
+        <rect x="25" y="300" width="980" height="60" rx="10" fill="url(#layerGrad1)" stroke="#fb923c" stroke-width="0.8" stroke-dasharray="6,3"/>
+        <text x="37" y="318" fill="#fb923c" font-size="9" font-weight="600">SENTIMENT: MARKET SENTIMENT AGGREGATOR (External + Internal)</text>
+
+        <!-- Polymarket client -->
+        <rect x="50" y="328" width="140" height="24" rx="4" fill="rgba(120,53,15,0.2)" stroke="#fb923c" stroke-width="1"/>
+        <text x="120" y="344" fill="#fbbf24" font-size="8" text-anchor="middle">🧠 Polymarket</text>
+
+        <!-- Fear & Greed client -->
+        <rect x="210" y="328" width="140" height="24" rx="4" fill="rgba(120,53,15,0.2)" stroke="#fb923c" stroke-width="1"/>
+        <text x="280" y="344" fill="#fbbf24" font-size="8" text-anchor="middle">📊 Fear & Greed</text>
+
+        <!-- News client -->
+        <rect x="370" y="328" width="140" height="24" rx="4" fill="rgba(120,53,15,0.2)" stroke="#fb923c" stroke-width="1"/>
+        <text x="440" y="344" fill="#fbbf24" font-size="8" text-anchor="middle">📰 News Headlines</text>
+
+        <!-- Sentiment Aggregator box -->
+        <rect x="560" y="322" width="170" height="32" rx="6" fill="rgba(251,146,60,0.12)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="645" y="342" fill="#fb923c" font-size="9" font-weight="600" text-anchor="middle">SentimentAggregator</text>
+
+        <!-- Arrows: 3 clients → aggregator -->
+        <line x1="190" y1="340" x2="208" y2="340" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+        <line x1="350" y1="340" x2="368" y2="340" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+        <line x1="510" y1="340" x2="558" y2="340" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+
+        <!-- Sentiment → AI Meta-Analyzer arrow -->
+        <path d="M 645 354 L 645 252" stroke="#fb923c" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arrow-orange)"/>
+        <text x="655" y="272" fill="#fb923c" font-size="7" text-anchor="start">Sentiment Prompt</text>
+
         <!-- ═══════════════ ENSEMBLE STRATEGIES SECTION ═══════════════ -->
-        <rect x="25" y="300" width="980" height="205" rx="10" fill="url(#strategyGrad)" stroke="#fbbf24" stroke-width="0.8" stroke-dasharray="6,3"/>
-        <text x="37" y="318" fill="#fbbf24" font-size="9" font-weight="600">STRATEGY: ENSEMBLE STRATEGIES (Algorithmic)</text>
+        <rect x="25" y="380" width="980" height="205" rx="10" fill="url(#strategyGrad)" stroke="#fbbf24" stroke-width="0.8" stroke-dasharray="6,3"/>
+        <text x="37" y="398" fill="#fbbf24" font-size="9" font-weight="600">STRATEGY: ENSEMBLE STRATEGIES (Algorithmic)</text>
 
         <!-- Trend Following strategy -->
-        <rect x="40" y="335" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
-        <text x="135" y="355" fill="white" font-size="10" font-weight="600" text-anchor="middle">📈 Trend Following</text>
-        <text x="135" y="370" fill="#fbbf24" font-size="8" text-anchor="middle">SMA20 &gt; SMA50 → BUY</text>
-        <text x="135" y="385" fill="#94a3b8" font-size="7" text-anchor="middle">Price vs MA · Slope · 7 Rules</text>
+        <rect x="40" y="415" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
+        <text x="135" y="435" fill="white" font-size="10" font-weight="600" text-anchor="middle">📈 Trend Following</text>
+        <text x="135" y="450" fill="#fbbf24" font-size="8" text-anchor="middle">SMA20 &gt; SMA50 → BUY</text>
+        <text x="135" y="465" fill="#94a3b8" font-size="7" text-anchor="middle">Price vs MA · Slope · 7 Rules</text>
 
         <!-- Mean Reversion strategy -->
-        <rect x="270" y="335" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
-        <text x="365" y="355" fill="white" font-size="10" font-weight="600" text-anchor="middle">🔄 Mean Reversion</text>
-        <text x="365" y="370" fill="#fbbf24" font-size="8" text-anchor="middle">RSI &lt; 30 → BUY</text>
-        <text x="365" y="385" fill="#94a3b8" font-size="7" text-anchor="middle">RSI Extremes · Volume Conf.</text>
+        <rect x="270" y="415" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
+        <text x="365" y="435" fill="white" font-size="10" font-weight="600" text-anchor="middle">🔄 Mean Reversion</text>
+        <text x="365" y="450" fill="#fbbf24" font-size="8" text-anchor="middle">RSI &lt; 30 → BUY</text>
+        <text x="365" y="465" fill="#94a3b8" font-size="7" text-anchor="middle">RSI Extremes · Volume Conf.</text>
 
         <!-- Momentum strategy -->
-        <rect x="500" y="335" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
-        <text x="595" y="355" fill="white" font-size="10" font-weight="600" text-anchor="middle">⚡ Momentum</text>
-        <text x="595" y="370" fill="#fbbf24" font-size="8" text-anchor="middle">ROC + Vol. Momentum</text>
-        <text x="595" y="385" fill="#94a3b8" font-size="7" text-anchor="middle">Price ROC · Volume Score</text>
+        <rect x="500" y="415" width="190" height="65" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.2"/>
+        <text x="595" y="435" fill="white" font-size="10" font-weight="600" text-anchor="middle">⚡ Momentum</text>
+        <text x="595" y="450" fill="#fbbf24" font-size="8" text-anchor="middle">ROC + Vol. Momentum</text>
+        <text x="595" y="465" fill="#94a3b8" font-size="7" text-anchor="middle">Price ROC · Volume Score</text>
 
         <!-- Consensus box -->
-        <rect x="740" y="335" width="240" height="65" rx="6" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="860" y="355" fill="white" font-size="10" font-weight="600" text-anchor="middle">🔀 Ensemble Consensus</text>
-        <text x="860" y="370" fill="#34d399" font-size="8" text-anchor="middle">Weighted Voting · Strategy Signals</text>
-        <text x="860" y="385" fill="#94a3b8" font-size="7" text-anchor="middle">Injected into AI Prompt</text>
+        <rect x="740" y="415" width="240" height="65" rx="6" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="860" y="435" fill="white" font-size="10" font-weight="600" text-anchor="middle">🔀 Ensemble Consensus</text>
+        <text x="860" y="450" fill="#34d399" font-size="8" text-anchor="middle">Weighted Voting · Strategy Signals</text>
+        <text x="860" y="465" fill="#94a3b8" font-size="7" text-anchor="middle">Injected into AI Prompt</text>
 
         <!-- Strategy arrows to consensus -->
-        <line x1="230" y1="367" x2="268" y2="367" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
-        <line x1="460" y1="367" x2="498" y2="367" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
-        <line x1="690" y1="367" x2="738" y2="367" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+        <line x1="230" y1="447" x2="268" y2="447" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+        <line x1="460" y1="447" x2="498" y2="447" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
+        <line x1="690" y1="447" x2="738" y2="447" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arrow-amber)"/>
 
         <!-- Backtest Engine -->
-        <rect x="40" y="420" width="200" height="65" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="140" y="442" fill="white" font-size="11" font-weight="600" text-anchor="middle">🔬 Backtest Engine</text>
-        <text x="140" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">Historical Simulation</text>
-        <text x="140" y="472" fill="#34d399" font-size="7" text-anchor="middle">Sharpe · Max DD · Win Rate</text>
+        <rect x="40" y="500" width="200" height="65" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="140" y="522" fill="white" font-size="11" font-weight="600" text-anchor="middle">🔬 Backtest Engine</text>
+        <text x="140" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">Historical Simulation</text>
+        <text x="140" y="552" fill="#34d399" font-size="7" text-anchor="middle">Sharpe · Max DD · Win Rate</text>
 
         <!-- Scheduler -->
-        <rect x="780" y="420" width="200" height="65" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
-        <text x="880" y="442" fill="white" font-size="11" font-weight="600" text-anchor="middle">⏰ Scheduler</text>
-        <text x="880" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">Daily Auto Analysis</text>
-        <text x="880" y="472" fill="#fbbf24" font-size="7" text-anchor="middle">Market Hours · Cron</text>
+        <rect x="780" y="500" width="200" height="65" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="880" y="522" fill="white" font-size="11" font-weight="600" text-anchor="middle">⏰ Scheduler</text>
+        <text x="880" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">Daily Auto Analysis</text>
+        <text x="880" y="552" fill="#fbbf24" font-size="7" text-anchor="middle">Market Hours · Cron</text>
 
         <!-- API endpoints row -->
-        <rect x="280" y="420" width="450" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#fb7185" stroke-width="1.2"/>
-        <text x="505" y="440" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">REST API ENDPOINTS</text>
-        <text x="350" y="456" fill="white" font-size="8" font-anchor="start">GET /api/analyze/{symbol}</text>
-        <text x="350" y="468" fill="#94a3b8" font-size="7" font-anchor="start">POST /api/trade/execute</text>
-        <text x="570" y="456" fill="white" font-size="8" font-anchor="start">GET /api/strategy?symbol=</text>
-        <text x="570" y="468" fill="#94a3b8" font-size="7" font-anchor="start">GET /api/backtest · GET /api/trades</text>
+        <rect x="280" y="500" width="450" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="505" y="520" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">REST API ENDPOINTS</text>
+        <text x="350" y="536" fill="white" font-size="8" font-anchor="start">GET /api/analyze/{symbol}</text>
+        <text x="350" y="548" fill="#94a3b8" font-size="7" font-anchor="start">POST /api/trade/execute</text>
+        <text x="570" y="536" fill="white" font-size="8" font-anchor="start">GET /api/strategy?symbol=</text>
+        <text x="570" y="548" fill="#94a3b8" font-size="7" font-anchor="start">GET /api/backtest · GET /api/trades</text>
 
         <!-- Database arrow -->
-        <path d="M 885 117 L 885 223" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
+        <path d="M 815 117 L 815 223" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
 
         <!-- Data flow: Data Client → Strategy → Consensus → AI Analyzer -->
-        <path d="M 130 280 L 130 330 L 260 330" stroke="#22d3ee" stroke-width="1.2" fill="none" marker-end="url(#arrow-cyan)"/>
-        <path d="M 130 280 L 130 448" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
+        <path d="M 130 280 L 130 410 L 260 410" stroke="#22d3ee" stroke-width="1.2" fill="none" marker-end="url(#arrow-cyan)"/>
+        <path d="M 130 280 L 130 528" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arrow-cyan)"/>
 
         <!-- Consensus → AI Meta-Analyzer -->
-        <path d="M 860 400 L 860 252 L 680 252" stroke="#fb923c" stroke-width="1.5" fill="none" marker-end="url(#arrow-orange)"/>
-        <rect x="785" y="310" width="150" height="20" rx="4" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
-        <text x="860" y="324" fill="#22d3ee" font-size="8" text-anchor="middle">Strategy Signals → Prompt</text>
+        <path d="M 860 480 L 860 252 L 680 252" stroke="#fb923c" stroke-width="1.5" fill="none" marker-end="url(#arrow-orange)"/>
+        <rect x="785" y="385" width="150" height="20" rx="4" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
+        <text x="860" y="399" fill="#22d3ee" font-size="8" text-anchor="middle">Strategy Signals → Prompt</text>
 
         <!-- ═══════════════ LAYER 3: PRESENTATION ═══════════════ -->
         <rect x="25" y="545" width="1000" height="195" rx="12" fill="url(#layerGrad3)" stroke="#34d399" stroke-width="0.8" stroke-dasharray="6,3"/>

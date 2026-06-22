@@ -55,6 +55,13 @@ export interface Analysis {
   currentPrice: number;
   strategySignals?: any[];
   strategySummary?: any;
+  marketSentiment?: {
+    polymorpharket?: any[];
+    fearGreed?: { score: number; label: string; previousClose: number };
+    news?: { score: number; label: string; headlineCount: number; topHeadlines: string[] };
+    compositeLabel: string;
+    compositeBias: number;
+  };
 }
 
 export interface Performance {

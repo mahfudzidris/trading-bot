@@ -25,6 +25,7 @@ from db import crud
 from scheduler.daily_run import run_daily
 from backtest.engine import BacktestEngine
 from pydantic import BaseModel
+from sentiment.sentiment_aggregator import SentimentAggregator
 
 # ── Request models ─────────────────────────────────────────────────────────
 
@@ -65,13 +66,14 @@ data_client: TwelveDataClient | None = None
 ai_analyzer: DeepSeekAnalyzer | None = None
 broker_client: AlpacaClient | None = None
 strategy_engine: StrategyEngine | None = None
+sentiment_aggregator: SentimentAggregator | None = None
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
-    global data_client, ai_analyzer, broker_client, strategy_engine
+    global data_client, ai_analyzer, broker_client, strategy_engine, sentiment_aggregator
 
     logger.info("Starting up Trading Bot backend (mock_mode=%s)...", settings.MOCK_MODE)
 
@@ -101,6 +103,9 @@ async def lifespan(app: FastAPI):
         broker_client=broker_client,
         config=settings,
     )
+    sentiment_aggregator = SentimentAggregator(
+        mock_mode=settings.MOCK_MODE,
+    )
 
     # Seed mock data if in mock mode
     if settings.MOCK_MODE:
@@ -119,6 +124,8 @@ async def lifespan(app: FastAPI):
         await data_client.close()
     if ai_analyzer:
         await ai_analyzer.close()
+    if sentiment_aggregator:
+        await sentiment_aggregator.close()
     logger.info("Services shut down.")
 
 
@@ -160,6 +167,13 @@ def _get_services() -> tuple[TwelveDataClient, DeepSeekAnalyzer, AlpacaClient, S
     if any(x is None for x in (data_client, ai_analyzer, broker_client, strategy_engine)):
         raise HTTPException(status_code=503, detail="Services not initialised")
     return data_client, ai_analyzer, broker_client, strategy_engine  # type: ignore
+
+
+def _get_sentiment() -> SentimentAggregator:
+    """Return the global SentimentAggregator (raises if not ready)."""
+    if sentiment_aggregator is None:
+        raise HTTPException(status_code=503, detail="Sentiment services not initialised")
+    return sentiment_aggregator
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -494,11 +508,13 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
     """Run an AI analysis on a single symbol without executing a trade.
 
     Now uses ensemble strategy signals (Trend, Mean Reversion, Momentum)
+    AND aggregated market sentiment (Polymarket, Fear & Greed, News)
     as extra context for the DeepSeek AI model.
     """
     from strategies import EnsembleStrategy
 
     dc, ai, _, _ = _get_services()
+    sentiment = _get_sentiment()
 
     symbol = symbol.upper()
     quote = await dc.get_stock_quote(symbol)
@@ -511,13 +527,18 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
         "timestamp": quote.get("timestamp", ""),
     }
 
-    # ── New: run ensemble strategy signals ──
+    # ── Run ensemble strategy signals ──
     ensemble = EnsembleStrategy()
     signals = ensemble.analyze(indicators)
     strategy_summary = ensemble.get_summary(signals)
     signals_dicts = [s.to_dict() for s in signals]
 
-    decision = await ai.analyze_market(symbol, price_data, indicators, signals_dicts)
+    # ── Fetch market sentiment (Polymarket, Fear & Greed, News) ──
+    market_sentiment = await sentiment.aggregate()
+
+    decision = await ai.analyze_market(
+        symbol, price_data, indicators, signals_dicts, market_sentiment,
+    )
 
     return {
         "symbol": symbol,
@@ -534,6 +555,7 @@ async def analyze_symbol(symbol: str) -> dict[str, Any]:
         "decision": decision,
         "strategy_signals": signals_dicts,
         "strategy_summary": strategy_summary,
+        "market_sentiment": market_sentiment,
     }
 
 

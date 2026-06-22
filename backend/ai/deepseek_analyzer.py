@@ -36,6 +36,7 @@ class DeepSeekAnalyzer:
         price_data: dict[str, Any],
         indicators: dict[str, Any],
         strategy_signals: list[dict[str, Any]] | None = None,
+        market_sentiment: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Run a full AI analysis on *symbol* and return a trade decision dict.
 
@@ -49,6 +50,9 @@ class DeepSeekAnalyzer:
             Technical indicators (SMA, EMA, RSI, etc.).
         strategy_signals : list[dict] | None
             Optional pre-computed signals from EnsembleStrategy.
+        market_sentiment : dict | None
+            Optional aggregated market sentiment (Polymarket, Fear & Greed,
+            News). Injected as an extra section in the prompt.
 
         Returns
         -------
@@ -57,9 +61,9 @@ class DeepSeekAnalyzer:
             position_size_pct.
         """
         if self.mock_mode:
-            return self._mock_decision(symbol, price_data, indicators, strategy_signals)
+            return self._mock_decision(symbol, price_data, indicators, strategy_signals, market_sentiment)
 
-        prompt = self.build_prompt(symbol, price_data, indicators, strategy_signals)
+        prompt = self.build_prompt(symbol, price_data, indicators, strategy_signals, market_sentiment)
         response_text = await self._call_deepseek(prompt)
         return self._parse_response(response_text, symbol, price_data, indicators)
 
@@ -103,11 +107,16 @@ class DeepSeekAnalyzer:
         price_data: dict[str, Any],
         indicators: dict[str, Any],
         strategy_signals: list[dict[str, Any]] | None = None,
+        market_sentiment: dict[str, Any] | None = None,
     ) -> str:
         """Construct the detailed prompt sent to DeepSeek.
 
         If *strategy_signals* is provided (list of dicts from EnsembleStrategy),
         they are injected as extra context so the AI can weigh each strategy.
+
+        If *market_sentiment* is provided (from SentimentAggregator), the macro
+        sentiment data (Polymarket, Fear & Greed, News) is injected so the AI
+        can factor in crowd sentiment and market narratives.
         """
         prompt = f"""You are an expert quantitative trader. Analyse the following data for {symbol} and decide whether to BUY, SELL, or HOLD.
 
@@ -139,6 +148,39 @@ These are individual strategy signals. Evaluate them critically:
 - Do NOT simply follow the majority vote; reason from first principles.
 """
 
+        # ── Market sentiment section ──
+        if market_sentiment:
+            prompt += "\n=== MARKET SENTIMENT ===\n"
+
+            fg = market_sentiment.get("fear_greed", {})
+            prompt += f"Fear & Greed Index: {fg.get('score', 'N/A')}/100 — {fg.get('label', 'N/A')}\n"
+
+            news = market_sentiment.get("news", {})
+            prompt += f"News Sentiment: {news.get('label', 'N/A')} (score: {news.get('score', 0)})\n"
+            headlines = news.get("top_headlines", [])
+            if headlines:
+                prompt += "Top Headlines:\n"
+                for h in headlines[:3]:
+                    prompt += f"  • {h}\n"
+
+            poly = market_sentiment.get("polymarket", [])
+            if poly:
+                prompt += "Prediction Markets (real-money probabilities):\n"
+                for m in poly[:4]:
+                    pct = m.get("probability", 0) * 100
+                    prompt += f"  • {m.get('question', '?')}: {pct:.0f}% (${m.get('volume', 0):,} volume)\n"
+
+            composite = market_sentiment.get("composite_label", "Neutral")
+            bias = market_sentiment.get("composite_bias", 0)
+            prompt += f"\nComposite Market Sentiment: {composite} (bias: {bias:+.2f})\n"
+
+            prompt += """
+These are external sentiment signals from prediction markets, the Fear & Greed
+Index, and financial news. Use them as a macro overlay — they tell you whether
+the broader market mood aligns with or contradicts your technical analysis.
+A strongly bearish macro sentiment against bullish technicals may warrant caution.
+"""
+
         prompt += """
 Return your analysis as a JSON object with these fields:
 - "action": "BUY" | "SELL" | "HOLD"
@@ -162,6 +204,7 @@ Output ONLY the JSON object, nothing else.
         price_data: dict[str, Any],
         indicators: dict[str, Any],
         strategy_signals: list[dict[str, Any]] | None = None,
+        market_sentiment: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         price = indicators.get("price", price_data.get("price", 100.0))
         rsi = indicators.get("rsi_14", 50)
@@ -173,6 +216,15 @@ Output ONLY the JSON object, nothing else.
         action: str = "HOLD"
         confidence: int = 50
         reasoning_parts: list[str] = []
+
+        # ── Market sentiment override ──
+        sentiment_bias = 0.0
+        if market_sentiment:
+            sentiment_bias = market_sentiment.get("composite_bias", 0)
+            composite = market_sentiment.get("composite_label", "Neutral")
+            fg = market_sentiment.get("fear_greed", {})
+            fg_label = fg.get("label", "N/A")
+            reasoning_parts.append(f"Market sentiment: {composite} (Fear & Greed: {fg_label}, bias: {sentiment_bias:+.2f})")
 
         # If strategy signals are available, use them to inform the mock
         if strategy_signals:
@@ -227,6 +279,20 @@ Output ONLY the JSON object, nothing else.
             reasoning_parts.append("Below-average volume suggests low conviction")
             confidence -= 5
 
+        confidence = max(0, min(100, confidence))
+
+        # Sentiment bias influences mock confidence (+/- 15 pts) and can nudge HOLD
+        if sentiment_bias != 0.0 and action == "HOLD":
+            if sentiment_bias > 0.3:
+                action = "BUY"
+                confidence = max(confidence, 55)
+                reasoning_parts.append("Positive macro sentiment biases toward BUY")
+            elif sentiment_bias < -0.3:
+                action = "SELL"
+                confidence = max(confidence, 55)
+                reasoning_parts.append("Negative macro sentiment biases toward SELL")
+        # Adjust confidence by sentiment magnitude
+        confidence += int(sentiment_bias * 15)
         confidence = max(0, min(100, confidence))
         price_pct = 0.05 if action in ("BUY", "SELL") else 0.0
 

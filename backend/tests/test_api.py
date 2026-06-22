@@ -138,6 +138,24 @@ class TestAPIAnalyze:
         assert "sma_50" in ind
         assert "rsi_14" in ind
 
+    @pytest.mark.asyncio
+    async def test_analyze_symbol_market_sentiment(self, async_client):
+        """Verify analyze response includes market_sentiment with expected structure."""
+        resp = await async_client.get("/api/analyze/AAPL")
+        data = resp.json()
+        assert "market_sentiment" in data
+        ms = data["market_sentiment"]
+        assert "polymarket" in ms
+        assert "fear_greed" in ms
+        assert "news" in ms
+        assert "composite_label" in ms
+        assert "composite_bias" in ms
+        fg = ms["fear_greed"]
+        assert "score" in fg
+        assert "label" in fg
+        assert "previous_close" in fg
+        assert -1.0 <= ms["composite_bias"] <= 1.0
+
 
 class TestAPIRunAnalysis:
     """Tests for POST /api/run-analysis."""

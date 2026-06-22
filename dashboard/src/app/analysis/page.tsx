@@ -9,18 +9,21 @@ import {
   DollarSign,
   Activity,
   Clock,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown,
+  Minus,
+  Layers,
+  Globe,
+  Newspaper,
+  BrainCircuit,
+  Gauge,
+  ExternalLink,
 } from 'lucide-react';
 import AiRecommendation from '@/components/AiRecommendation';
 import StatusBadge from '@/components/StatusBadge';
 import { analyzeSymbol, fetchTrades, fetchAccount, executeTrade } from '@/lib/api';
 import type { Analysis, Trade } from '@/types';
 import { cn } from '@/lib/utils';
-import {
-  TrendingUp as TrendingUpIcon,
-  TrendingDown,
-  Minus,
-  Layers,
-} from 'lucide-react';
 
 const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
 
@@ -250,6 +253,106 @@ export default function AnalysisPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Market Sentiment (Polymarket, Fear & Greed, News) */}
+          {!loading && analysis?.marketSentiment && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-amber-400" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                    Market Sentiment
+                  </h2>
+                </div>
+                {analysis.marketSentiment.compositeLabel && (
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-[10px] font-bold',
+                    analysis.marketSentiment.compositeLabel.includes('Bullish') ? 'bg-green-500/20 text-green-400' :
+                    analysis.marketSentiment.compositeLabel.includes('Bearish') ? 'bg-red-500/20 text-red-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  )}>
+                    {analysis.marketSentiment.compositeLabel}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {/* Fear & Greed */}
+                <div className="rounded-lg bg-slate-800/50 p-3">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Gauge className="h-3 w-3 text-amber-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Fear & Greed</span>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-slate-100">
+                    {analysis.marketSentiment.fearGreed?.score ?? '—'}
+                    <span className="ml-1 text-[10px] font-normal text-slate-400">
+                      ({analysis.marketSentiment.fearGreed?.label ?? 'N/A'})
+                    </span>
+                  </p>
+                </div>
+
+                {/* News Sentiment */}
+                <div className="rounded-lg bg-slate-800/50 p-3">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Newspaper className="h-3 w-3 text-blue-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">News</span>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-slate-100">
+                    {analysis.marketSentiment.news?.label ?? '—'}
+                  </p>
+                  {analysis.marketSentiment.news?.topHeadlines && (
+                    <div className="mt-1.5 space-y-0.5">
+                      {analysis.marketSentiment.news.topHeadlines.slice(0, 2).map((h: string, i: number) => (
+                        <p key={i} className="text-[10px] text-slate-500 truncate">• {h}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Polymarket */}
+                <div className="rounded-lg bg-slate-800/50 p-3">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <BrainCircuit className="h-3 w-3 text-purple-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Prediction Mkts</span>
+                  </div>
+                  {analysis.marketSentiment.polymarket && analysis.marketSentiment.polymarket.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {(analysis.marketSentiment.polymarket as Array<{question: string; probability: number; volume: number}>).slice(0, 2).map((m: any, i: number) => {
+                        const pct = Math.round((m.probability ?? 0) * 100);
+                        return (
+                          <p key={i} className="text-[10px] text-slate-500 truncate">
+                            • {m.question?.slice(0, 35) ?? '?'}: <span className="text-amber-400">{pct}%</span>
+                          </p>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-500">No data</p>
+                  )}
+                </div>
+              </div>
+              {/* Composite bias bar */}
+              {analysis.marketSentiment.compositeBias !== undefined && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                    <span>Bearish</span>
+                    <span>Bias: {(analysis.marketSentiment.compositeBias * 100).toFixed(0)}%</span>
+                    <span>Bullish</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-slate-700/50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${((analysis.marketSentiment.compositeBias + 1) / 2) * 100}%`,
+                        background: analysis.marketSentiment.compositeBias >= 0
+                          ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                          : 'linear-gradient(90deg, #ef4444, #dc2626)',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
