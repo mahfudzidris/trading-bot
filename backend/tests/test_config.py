@@ -16,7 +16,7 @@ class TestSettings:
         s = Settings(_env_file=None)  # Don't read .env
         assert s.MOCK_MODE is True
         assert s.PORT == 8000
-        assert "AAPL" in s.SYMBOLS
+        assert "SPY" in s.SYMBOLS
         assert s.TRADE_MAX_POSITION_SIZE == 0.1
         assert s.ALPACA_PAPER is True
         assert s.TRADE_STOP_LOSS_PCT == 0.02

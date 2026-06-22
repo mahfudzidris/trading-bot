@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     DB_PATH: str = "data/trading.db"
 
     # ── Trading Parameters ────────────────────────────────────────────────
-    SYMBOLS: List[str] = ["AAPL", "TSLA", "MSFT", "GOOGL", "AMZN"]
+    SYMBOLS: List[str] = ["SPY"]
     TRADE_MAX_POSITION_SIZE: float = 0.1
     TRADE_STOP_LOSS_PCT: float = 0.02
     TRADE_TAKE_PROFIT_PCT: float = 0.05

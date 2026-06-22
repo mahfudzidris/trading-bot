@@ -42,7 +42,7 @@ def _make_settings() -> Settings:
         DEEPSEEK_API_KEY="test_key",
         MOCK_MODE=True,
         PORT=8000,
-        SYMBOLS=["AAPL", "TSLA", "MSFT", "GOOGL", "AMZN"],
+        SYMBOLS=["SPY"],
         TRADE_MAX_POSITION_SIZE=0.1,
         TRADE_STOP_LOSS_PCT=0.02,
         TRADE_TAKE_PROFIT_PCT=0.05,

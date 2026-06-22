@@ -25,10 +25,10 @@ import { analyzeSymbol, fetchTrades, fetchAccount, executeTrade } from '@/lib/ap
 import type { Analysis, Trade } from '@/types';
 import { cn } from '@/lib/utils';
 
-const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
+const SYMBOLS = ['SPY'];
 
 export default function AnalysisPage() {
-  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const [selectedSymbol, setSelectedSymbol] = useState('SPY');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
   const [strategySignals, setStrategySignals] = useState<any[]>([]);

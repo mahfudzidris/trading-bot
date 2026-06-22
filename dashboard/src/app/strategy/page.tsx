@@ -64,8 +64,8 @@ interface LiveData {
 }
 
 export default function StrategyPage() {
-  const SYMBOLS = ['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'SPY', 'QQQ'];
-  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const SYMBOLS = ['SPY'];
+  const [selectedSymbol, setSelectedSymbol] = useState('SPY');
   const [data, setData] = useState<StrategyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

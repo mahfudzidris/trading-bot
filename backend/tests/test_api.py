@@ -177,7 +177,7 @@ class TestAPIRunAnalysis:
         resp = await async_client.post("/api/run-analysis")
         data = resp.json()
         symbols_returned = {a["symbol"] for a in data["analyses"]}
-        expected = {"AAPL", "TSLA", "MSFT", "GOOGL", "AMZN"}
+        expected = {"SPY"}
         assert symbols_returned == expected
 
 
