@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, StopOrderRequest
+    from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, StopOrderRequest, TakeProfitRequest, StopLossRequest
     from alpaca.trading.enums import OrderSide, TimeInForce
     from alpaca.data import StockHistoricalDataClient
     from alpaca.data.requests import StockBarsRequest
@@ -46,11 +46,7 @@ class AlpacaClient:
         self._mock_positions: dict[str, dict[str, Any]] = {}
         self._mock_orders: list[dict[str, Any]] = []
         self._mock_base_prices: dict[str, float] = {
-            "AAPL": 180.0,
-            "TSLA": 250.0,
-            "MSFT": 380.0,
-            "GOOGL": 140.0,
-            "AMZN": 170.0,
+            "SPY": 570.0,
         }
 
         if not mock_mode and ALPACA_AVAILABLE:
@@ -170,7 +166,9 @@ class AlpacaClient:
     # ──────────────────────────────────────────────────────────────────────
 
     async def place_market_order(
-        self, symbol: str, qty: int, side: str
+        self, symbol: str, qty: int, side: str,
+        take_profit: float | None = None,
+        stop_loss: float | None = None,
     ) -> dict[str, Any]:
         if self.mock_mode:
             price = self._mock_base_prices.get(symbol.upper(), 100.0)
@@ -185,6 +183,8 @@ class AlpacaClient:
                 "filled_qty": qty,
                 "created_at": datetime.utcnow().isoformat(),
                 "filled_at": datetime.utcnow().isoformat(),
+                "take_profit": take_profit,
+                "stop_loss": stop_loss,
             }
             self._mock_orders.append(order)
             self._update_mock_position(symbol.upper(), qty, side, price)
@@ -197,6 +197,15 @@ class AlpacaClient:
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
             )
+            # Attach bracket order (TP/SL) if prices provided
+            if take_profit or stop_loss:
+                req.order_class = "bracket"
+            if take_profit:
+                req.take_profit = TakeProfitRequest(limit_price=take_profit)
+            if stop_loss:
+                import alpaca.trading.requests as _atr
+                req.stop_loss = StopLossRequest(stop_price=stop_loss)
+
             order = self._trade_client.submit_order(req)
             return {
                 "id": order.id,
@@ -209,6 +218,8 @@ class AlpacaClient:
                 "filled_qty": int(order.filled_qty) if order.filled_qty else 0,
                 "created_at": str(order.created_at),
                 "filled_at": str(order.filled_at) if order.filled_at else "",
+                "take_profit": take_profit,
+                "stop_loss": stop_loss,
             }
         except Exception as exc:
             logger.error("place_market_order(%s) failed: %s", symbol, exc)

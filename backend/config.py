@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # ── Operational ──────────────────────────────────────────────────────
     ALPACA_PAPER: bool = True
     MOCK_MODE: bool = True
+    AUTO_TRADE: bool = False
     PORT: int = 8000
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}

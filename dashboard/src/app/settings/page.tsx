@@ -8,17 +8,19 @@ export default function SettingsPage() {
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   );
   const [mockMode, setMockMode] = useState(false);
+  const [autoTrade, setAutoTrade] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch current mock mode on mount
+  // Fetch current mock mode + auto trade on mount
   useEffect(() => {
     const init = async () => {
       try {
         const res = await fetch(`${apiUrl}/api/health`);
         const data = await res.json();
         setMockMode(data.mock_mode === true);
+        setAutoTrade(data.auto_trade === true);
       } catch {
         // keep default
       }
@@ -34,7 +36,7 @@ export default function SettingsPage() {
       const res = await fetch(`${apiUrl}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mock_mode: mockMode }),
+        body: JSON.stringify({ mock_mode: mockMode, auto_trade: autoTrade }),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
@@ -100,6 +102,27 @@ export default function SettingsPage() {
               />
             </button>
           </div>
+
+          <div className="flex items-center justify-between rounded-lg bg-slate-900/50 p-4">
+            <div>
+              <p className="text-sm font-medium text-slate-200">Auto Trade</p>
+              <p className="text-xs text-slate-500">
+                Automatically execute BUY/SELL based on AI signals
+              </p>
+            </div>
+            <button
+              onClick={() => setAutoTrade(!autoTrade)}
+              className={`relative h-6 w-11 rounded-full transition-colors ${
+                autoTrade ? 'bg-emerald-600' : 'bg-slate-700'
+              }`}
+            >
+              <span
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                  autoTrade ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         <button
@@ -141,7 +164,8 @@ export default function SettingsPage() {
         )}
 
         <p className="mt-3 text-[10px] text-slate-600">
-          Mock mode = guna data simulasi. Live mode = guna TwelveData + Alpaca (paper).
+          Mock mode = guna data simulasi. Live mode = guna TwelveData + Alpaca (paper).<br />
+          Auto Trade = execute BUY/SELL based on AI signals, dengan bracket TP/SL orders.
           Backend akan restart automatically selepas save.
         </p>
       </div>

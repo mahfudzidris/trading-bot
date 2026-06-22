@@ -290,7 +290,8 @@ async def health_check() -> dict[str, Any]:
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
         "mock_mode": settings.MOCK_MODE,
-        "version": "1.0.0",
+        "auto_trade": settings.AUTO_TRADE,
+        "version": "2.0.0",
     }
 
 
@@ -567,8 +568,12 @@ async def execute_trade(
     """Execute a manual buy/sell trade on Alpaca based on AI recommendation."""
     _, _, broker, _ = _get_services()
 
-    # ── Place order on Alpaca ──
-    order = await broker.place_market_order(req.symbol.upper(), req.qty, req.side.upper())
+    # ── Place order on Alpaca with bracket TP/SL ──
+    order = await broker.place_market_order(
+        req.symbol.upper(), req.qty, req.side.upper(),
+        take_profit=req.take_profit,
+        stop_loss=req.stop_loss,
+    )
 
     if order.get("status") == "FAILED":
         raise HTTPException(status_code=500, detail=order.get("error", "Order execution failed"))
@@ -725,15 +730,16 @@ async def get_backtest_detail(
 
 class UpdateSettingsRequest(BaseModel):
     mock_mode: bool | None = None
+    auto_trade: bool | None = None
 
 
 @app.post("/api/settings")
 async def update_settings(req: UpdateSettingsRequest) -> dict[str, bool | str]:
     """Update runtime settings and save to .env file.
 
-    Currently supports toggling MOCK_MODE. The backend auto-reloads via
-    --reload after writing, so the new value is picked up on the next
-    startup. The endpoint returns immediately.
+    Currently supports toggling MOCK_MODE and AUTO_TRADE. The backend
+    auto-reloads via --reload after writing, so the new value is picked
+    up on the next startup. The endpoint returns immediately.
     """
     import os
 
@@ -744,6 +750,11 @@ async def update_settings(req: UpdateSettingsRequest) -> dict[str, bool | str]:
         val = "true" if req.mock_mode else "false"
         _update_env_file(env_path, "MOCK_MODE", val)
         updates.append(f"MOCK_MODE={val}")
+
+    if req.auto_trade is not None:
+        val = "true" if req.auto_trade else "false"
+        _update_env_file(env_path, "AUTO_TRADE", val)
+        updates.append(f"AUTO_TRADE={val}")
 
     return {
         "ok": True,
