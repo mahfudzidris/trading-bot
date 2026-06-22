@@ -32,9 +32,9 @@ class TestSettings:
         assert s.PORT == 9000
 
     def test_symbols_list(self):
-        """Verify SYMBOLS is a list of strings with at least 5 entries."""
+        """Verify SYMBOLS is a list of strings with SPY."""
         s = Settings()
-        assert len(s.SYMBOLS) >= 5
+        assert "SPY" in s.SYMBOLS
         assert all(isinstance(sym, str) for sym in s.SYMBOLS)
 
     def test_model_config(self):

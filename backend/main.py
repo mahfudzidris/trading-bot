@@ -718,3 +718,70 @@ async def get_backtest_detail(
     if result is None:
         raise HTTPException(status_code=404, detail="Backtest result not found")
     return result
+
+
+# ── Settings ────────────────────────────────────────────────────────
+
+
+class UpdateSettingsRequest(BaseModel):
+    mock_mode: bool | None = None
+
+
+@app.post("/api/settings")
+async def update_settings(req: UpdateSettingsRequest) -> dict[str, bool | str]:
+    """Update runtime settings and save to .env file.
+
+    Currently supports toggling MOCK_MODE. The backend auto-reloads via
+    --reload after writing, so the new value is picked up on the next
+    startup. The endpoint returns immediately.
+    """
+    import os
+
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    updates: list[str] = []
+
+    if req.mock_mode is not None:
+        val = "true" if req.mock_mode else "false"
+        _update_env_file(env_path, "MOCK_MODE", val)
+        updates.append(f"MOCK_MODE={val}")
+
+    return {
+        "ok": True,
+        "updates": ", ".join(updates),
+        "restart_required": True,
+    }
+
+
+def _update_env_file(path: str, key: str, value: str) -> None:
+    """Find *key=...* in the file at *path* and replace it with *key=value*.
+
+    If the key does not exist it is appended to the end.  The caller is
+    expected to trigger a uvicorn reload (--reload picks up modified
+    .py files automatically after the .env is written).
+    """
+    import os
+    import re
+
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            f.write(f"{key}={value}\n")
+        return
+
+    with open(path, "r") as f:
+        lines = f.readlines()
+
+    pattern = re.compile(rf"^{key}\s*=\s*.*", re.IGNORECASE)
+    found = False
+    new_lines: list[str] = []
+    for line in lines:
+        if pattern.match(line.strip()):
+            new_lines.append(f"{key}={value}\n")
+            found = True
+        else:
+            new_lines.append(line)
+
+    if not found:
+        new_lines.append(f"{key}={value}\n")
+
+    with open(path, "w") as f:
+        f.writelines(new_lines)

@@ -1,25 +1,50 @@
 'use client';
 
-import { useState } from 'react';
-import { Save, RefreshCw, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, RefreshCw, AlertCircle, Check } from 'lucide-react';
 
 export default function SettingsPage() {
   const [apiUrl, setApiUrl] = useState(
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   );
-  const [mockMode, setMockMode] = useState(
-    process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
-  );
+  const [mockMode, setMockMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch current mock mode on mount
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/health`);
+        const data = await res.json();
+        setMockMode(data.mock_mode === true);
+      } catch {
+        // keep default
+      }
+    };
+    init();
+  }, [apiUrl]);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch(`${apiUrl}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mock_mode: mockMode }),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -83,9 +108,15 @@ export default function SettingsPage() {
           className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
         >
           {saving ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
           ) : saved ? (
-            <span className="text-emerald-200">✓ Saved</span>
+            <>
+              <Check className="h-4 w-4" />
+              Saved — reloading backend...
+            </>
           ) : (
             <>
               <Save className="h-4 w-4" />
@@ -93,6 +124,26 @@ export default function SettingsPage() {
             </>
           )}
         </button>
+
+        {error && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-500/10 p-3">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-400" />
+            <p className="text-xs text-red-400">{error}</p>
+          </div>
+        )}
+
+        {saved && (
+          <div className="mt-4 rounded-lg bg-amber-500/10 p-3">
+            <p className="text-xs text-amber-400">
+              ⏳ Backend sedang reload dengan setting baru. Refresh dashboard dalam ~5 saat.
+            </p>
+          </div>
+        )}
+
+        <p className="mt-3 text-[10px] text-slate-600">
+          Mock mode = guna data simulasi. Live mode = guna TwelveData + Alpaca (paper).
+          Backend akan restart automatically selepas save.
+        </p>
       </div>
 
       {/* About */}
