@@ -56,10 +56,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           <button
             onClick={() => setMobileMenuOpen(false)}
+            onTouchStart={() => setMobileMenuOpen(false)}
             className="rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50 lg:hidden"
             aria-label="Close menu"
           >
-            <X className="h-5 w-5" />
+            <X className="pointer-events-none h-5 w-5" />
           </button>
         </div>
 
@@ -110,10 +111,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4 lg:hidden">
           <button
             onClick={() => setMobileMenuOpen(true)}
+            onTouchStart={() => setMobileMenuOpen(true)}
             className="rounded-lg p-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50"
             aria-label="Open menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="pointer-events-none h-5 w-5" />
           </button>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
