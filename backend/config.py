@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     ALPACA_PAPER: bool = True
     MOCK_MODE: bool = True
     AUTO_TRADE: bool = False
+    MARKET_AUTO_RUN: bool = False    # 24/7 background watcher loop
+    MARKET_WATCH_INTERVAL: int = 30  # minutes between market-hour checks
     PORT: int = 8000
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}

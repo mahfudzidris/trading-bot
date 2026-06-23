@@ -311,7 +311,7 @@ function EquityCurveChart({ data }: { data: EquitySnapshot[] }) {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(v: number) => [`$${v.toLocaleString()}`, 'Equity']}
+              formatter={(v: any) => [`$${v?.toLocaleString() ?? 0}`, 'Equity']}
               labelFormatter={(l) => `Date: ${l}`}
             />
             <Area
@@ -447,7 +447,7 @@ function MonthlyReturnsChart({ data }: { data: Record<string, number> }) {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(v: number) => [`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`, 'Return']}
+              formatter={(v: any) => [`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`, 'Return']}
             />
             <Bar dataKey="return" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, i) => (

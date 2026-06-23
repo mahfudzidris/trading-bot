@@ -15,7 +15,7 @@ try:
     from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, StopOrderRequest, TakeProfitRequest, StopLossRequest
     from alpaca.trading.enums import OrderSide, TimeInForce
     from alpaca.data import StockHistoricalDataClient
-    from alpaca.data.requests import StockBarsRequest
+    from alpaca.data.requests import StockBarsRequest, StockLatestTradeRequest
     from alpaca.data.timeframe import TimeFrame
     ALPACA_AVAILABLE = True
 except ImportError:
@@ -162,6 +162,29 @@ class AlpacaClient:
             return []
 
     # ──────────────────────────────────────────────────────────────────────
+    # get_current_price
+    # ──────────────────────────────────────────────────────────────────────
+
+    async def get_current_price(self, symbol: str) -> float:
+        """Get latest trade price for a symbol from Alpaca (or mock)."""
+        if self.mock_mode:
+            return self._mock_base_prices.get(symbol.upper(), 100.0)
+        try:
+            req = StockLatestTradeRequest(symbol_or_symbols=symbol.upper())
+            resp = self._data_client.get_stock_latest_trade(req)
+            trade = resp.get(symbol.upper())
+            if trade and trade.price:
+                return float(trade.price)
+            raise ValueError(f"No latest trade data for {symbol}")
+        except Exception as exc:
+            logger.warning("get_current_price(%s) failed: %s", symbol, exc)
+            # fall back to last known bar close
+            bars = await self.get_bars(symbol, "1Day", limit=1)
+            if bars:
+                return bars[-1]["close"]
+            raise
+
+    # ──────────────────────────────────────────────────────────────────────
     # place_market_order
     # ──────────────────────────────────────────────────────────────────────
 
@@ -190,6 +213,38 @@ class AlpacaClient:
             self._update_mock_position(symbol.upper(), qty, side, price)
             return order
         try:
+            # Get current market price to validate TP/SL
+            current_price = await self.get_current_price(symbol)
+
+            # Recalculate stale TP/SL against current market price
+            # Use % spread from original TP/SL as guide
+            # If we can't determine original price, use sensible defaults
+            if side.upper() == "BUY":
+                if take_profit is not None and take_profit <= current_price * 1.001:
+                    tp_pct = (take_profit / current_price) - 1.0
+                    # If TP is below or nearly at current, use a default 5% gain
+                    if tp_pct <= 0.001:
+                        tp_pct = 0.05
+                    take_profit = round(current_price * (1 + abs(tp_pct)), 2)
+                    logger.info("Recalibrated BUY TP to $%.2f (current $%.2f, %.1f%% above)", take_profit, current_price, abs(tp_pct) * 100)
+                if stop_loss is not None and stop_loss >= current_price * 0.999:
+                    sl_pct = (stop_loss / current_price) - 1.0
+                    # If SL is above or nearly at current, use a default 2% loss
+                    if sl_pct >= -0.001:
+                        sl_pct = -0.02
+                    stop_loss = round(current_price * (1 - abs(sl_pct)), 2)
+                    logger.info("Recalibrated BUY SL to $%.2f (current $%.2f, %.1f%% below)", stop_loss, current_price, abs(sl_pct) * 100)
+            else:  # SELL
+                if take_profit is not None and take_profit >= current_price * 0.999:
+                    tp_pct = (take_profit / current_price) - 1.0
+                    if tp_pct >= -0.001:
+                        tp_pct = -0.05
+                    take_profit = round(current_price * (1 - abs(tp_pct)), 2)
+                if stop_loss is not None and stop_loss <= current_price * 1.001:
+                    sl_pct = (stop_loss / current_price) - 1.0
+                    if sl_pct <= 0.001:
+                        sl_pct = 0.02
+                    stop_loss = round(current_price * (1 + abs(sl_pct)), 2)
             order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
             req = MarketOrderRequest(
                 symbol=symbol,

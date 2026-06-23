@@ -23,6 +23,7 @@ from strategy.engine import StrategyEngine
 from db.models import init_db, get_db
 from db import crud
 from scheduler.daily_run import run_daily
+from scheduler.market_watcher import MarketWatcher
 from backtest.engine import BacktestEngine
 from pydantic import BaseModel
 from sentiment.sentiment_aggregator import SentimentAggregator
@@ -67,13 +68,14 @@ ai_analyzer: DeepSeekAnalyzer | None = None
 broker_client: AlpacaClient | None = None
 strategy_engine: StrategyEngine | None = None
 sentiment_aggregator: SentimentAggregator | None = None
+market_watcher: MarketWatcher | None = None
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
-    global data_client, ai_analyzer, broker_client, strategy_engine, sentiment_aggregator
+    global data_client, ai_analyzer, broker_client, strategy_engine, sentiment_aggregator, market_watcher
 
     logger.info("Starting up Trading Bot backend (mock_mode=%s)...", settings.MOCK_MODE)
 
@@ -107,6 +109,16 @@ async def lifespan(app: FastAPI):
         mock_mode=settings.MOCK_MODE,
     )
 
+    # Initialise market watcher (background loop)
+    market_watcher = MarketWatcher(
+        strategy_engine=strategy_engine,
+        broker_client=broker_client,
+        interval_minutes=settings.MARKET_WATCH_INTERVAL,
+        auto_run=settings.MARKET_AUTO_RUN,
+        db_session_factory=get_db,
+    )
+    await market_watcher.start()
+
     # Seed mock data if in mock mode
     if settings.MOCK_MODE:
         try:
@@ -120,6 +132,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    if market_watcher:
+        await market_watcher.stop()
     if data_client:
         await data_client.close()
     if ai_analyzer:
@@ -286,12 +300,16 @@ async def _seed_mock_data(db: AsyncSession) -> None:
 @app.get("/api/health")
 async def health_check() -> dict[str, Any]:
     """Simple health-check endpoint."""
+    watcher_status = market_watcher.status if market_watcher else {"running": False, "auto_run": False}
     return {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
         "mock_mode": settings.MOCK_MODE,
         "auto_trade": settings.AUTO_TRADE,
-        "version": "2.0.0",
+        "market_auto_run": settings.MARKET_AUTO_RUN,
+        "market_watch_interval": settings.MARKET_WATCH_INTERVAL,
+        "market_watcher": watcher_status,
+        "version": "2.1.0",
     }
 
 
@@ -584,8 +602,8 @@ async def execute_trade(
         "side": req.side.upper(),
         "qty": req.qty,
         "entry_price": order.get("filled_avg_price", 0),
-        "stop_loss": req.stop_loss,
-        "take_profit": req.take_profit,
+        "stop_loss": order.get("stop_loss", req.stop_loss),
+        "take_profit": order.get("take_profit", req.take_profit),
         "strategy": req.strategy,
         "ai_reasoning": req.ai_reasoning,
         "ai_confidence": req.ai_confidence,
@@ -731,20 +749,24 @@ async def get_backtest_detail(
 class UpdateSettingsRequest(BaseModel):
     mock_mode: bool | None = None
     auto_trade: bool | None = None
+    market_auto_run: bool | None = None
+    market_watch_interval: int | None = None
 
 
 @app.post("/api/settings")
 async def update_settings(req: UpdateSettingsRequest) -> dict[str, bool | str]:
     """Update runtime settings and save to .env file.
 
-    Currently supports toggling MOCK_MODE and AUTO_TRADE. The backend
-    auto-reloads via --reload after writing, so the new value is picked
-    up on the next startup. The endpoint returns immediately.
+    Supports toggling MOCK_MODE, AUTO_TRADE, MARKET_AUTO_RUN and
+    MARKET_WATCH_INTERVAL.  MARKET_AUTO_RUN and MARKET_WATCH_INTERVAL
+    are applied to the running market watcher immediately (no restart
+    needed).  MOCK_MODE and AUTO_TRADE require a restart.
     """
     import os
 
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     updates: list[str] = []
+    live_updates: list[str] = []
 
     if req.mock_mode is not None:
         val = "true" if req.mock_mode else "false"
@@ -756,10 +778,32 @@ async def update_settings(req: UpdateSettingsRequest) -> dict[str, bool | str]:
         _update_env_file(env_path, "AUTO_TRADE", val)
         updates.append(f"AUTO_TRADE={val}")
 
+    if req.market_auto_run is not None:
+        val = "true" if req.market_auto_run else "false"
+        _update_env_file(env_path, "MARKET_AUTO_RUN", val)
+        updates.append(f"MARKET_AUTO_RUN={val}")
+        # Apply to running watcher immediately
+        if market_watcher:
+            market_watcher.set_auto_run(req.market_auto_run)
+            live_updates.append("market_watcher.auto_run (live)")
+
+    if req.market_watch_interval is not None:
+        val = str(req.market_watch_interval)
+        _update_env_file(env_path, "MARKET_WATCH_INTERVAL", val)
+        updates.append(f"MARKET_WATCH_INTERVAL={val}")
+        # Apply to running watcher immediately
+        if market_watcher:
+            market_watcher.set_interval(req.market_watch_interval)
+            live_updates.append("market_watcher.interval (live)")
+
+    msg = ", ".join(updates)
+    if live_updates:
+        msg += f" [live: {', '.join(live_updates)}]"
+
     return {
         "ok": True,
-        "updates": ", ".join(updates),
-        "restart_required": True,
+        "updates": msg,
+        "restart_required": bool(req.mock_mode is not None or req.auto_trade is not None),
     }
 
 

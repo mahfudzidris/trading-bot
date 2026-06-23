@@ -58,11 +58,11 @@
         <div class="pulse-dot"></div>
         <h1>AI Trading Bot — Architecture</h1>
       </div>
-      <p class="subtitle">TwelveData → Ensemble Strategies → Market Sentiment → DeepSeek AI Meta-Analyzer → Auto-Trade (Bracket TP/SL) → Alpaca Broker → Dashboard</p>
+      <p class="subtitle">TwelveData → Ensemble Strategies → Market Sentiment → DeepSeek AI Meta-Analyzer → Auto-Trade (Bracket TP/SL) → Alpaca Broker → Dashboard · 24/7 Market Watcher Loop · TP/SL Auto-Recalibrate · DB Persist · Error Tracking</p>
     </div>
 
     <div class="diagram-container">
-      <svg viewBox="0 0 1050 820">
+      <svg viewBox="0 0 1050 870">
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0,10 3.5,0 7" fill="#64748b"/>
@@ -151,22 +151,22 @@
         <text x="37" y="208" fill="#22d3ee" font-size="9" font-weight="600">LAYER 2: APPLICATION — FastAPI Backend (Python) + Uvicorn</text>
 
         <!-- Data Client -->
-        <rect x="40" y="225" width="180" height="55" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <rect x="40" y="225" width="180" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
         <text x="130" y="242" fill="white" font-size="11" font-weight="600" text-anchor="middle">Data Client</text>
         <text x="130" y="258" fill="#94a3b8" font-size="9" text-anchor="middle">TwelveData Fetcher</text>
         <text x="130" y="272" fill="#22d3ee" font-size="7" text-anchor="middle">Real-time + Historical OHLCV</text>
 
         <!-- AI Analyzer (renamed: AI Meta-Analyzer) -->
-        <rect x="480" y="225" width="200" height="55" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <rect x="480" y="225" width="200" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
         <text x="580" y="242" fill="white" font-size="11" font-weight="600" text-anchor="middle">AI Meta-Analyzer</text>
         <text x="580" y="258" fill="#94a3b8" font-size="9" text-anchor="middle">DeepSeek Prompts + Signals</text>
         <text x="580" y="272" fill="#22d3ee" font-size="7" text-anchor="middle">Build Prompt · Parse Decision</text>
 
         <!-- Broker Client -->
-        <rect x="740" y="225" width="180" height="55" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <rect x="740" y="225" width="180" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
         <text x="830" y="242" fill="white" font-size="11" font-weight="600" text-anchor="middle">Broker Client</text>
         <text x="830" y="258" fill="#94a3b8" font-size="9" text-anchor="middle">Alpaca Connector</text>
-        <text x="830" y="272" fill="#22d3ee" font-size="7" text-anchor="middle">Market Orders · Positions · Account</text>
+        <text x="830" y="272" fill="#22d3ee" font-size="7" text-anchor="middle">Bracket TP/SL · Price Recalc</text>
 
         <!-- Data Client → AI Analyzer arrow -->
         <line x1="220" y1="252" x2="478" y2="252" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
@@ -251,12 +251,31 @@
         <text x="880" y="552" fill="#fbbf24" font-size="7" text-anchor="middle">Market Hours · Cron</text>
 
         <!-- API endpoints row -->
-        <rect x="280" y="500" width="450" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#fb7185" stroke-width="1.2"/>
-        <text x="505" y="520" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">REST API ENDPOINTS</text>
-        <text x="350" y="536" fill="white" font-size="8" font-anchor="start">GET /api/analyze/{symbol}</text>
-        <text x="350" y="548" fill="#94a3b8" font-size="7" font-anchor="start">POST /api/trade/execute</text>
-        <text x="570" y="536" fill="white" font-size="8" font-anchor="start">GET /api/strategy?symbol=</text>
-        <text x="570" y="548" fill="#94a3b8" font-size="7" font-anchor="start">GET /api/backtest · GET /api/trades</text>
+        <rect x="280" y="500" width="330" height="65" rx="6" fill="rgba(30,41,59,0.5)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="445" y="520" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">REST API ENDPOINTS</text>
+        <text x="295" y="536" fill="white" font-size="7.5">GET /api/analyze/{symbol}</text>
+        <text x="295" y="550" fill="#94a3b8" font-size="7">POST /api/trade/execute</text>
+        <text x="470" y="536" fill="white" font-size="7.5">GET /api/strategy?symbol=</text>
+        <text x="470" y="550" fill="#94a3b8" font-size="7">GET /api/settings · POST</text>
+
+        <!-- Market Watcher -->
+        <rect x="650" y="500" width="330" height="75" rx="6" fill="rgba(8,145,178,0.15)" stroke="#22d3ee" stroke-width="2"/>
+        <text x="815" y="520" fill="#22d3ee" font-size="11" font-weight="600" text-anchor="middle">🔄 Market Watcher</text>
+        <text x="815" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">24/7 Background Loop</text>
+        <text x="815" y="554" fill="#22d3ee" font-size="7" text-anchor="middle">Order Verify · DB Persist · Error Track</text>
+
+        <!-- Loop arrow around Market Watcher -->
+        <path d="M 815 565 C 900 565, 960 565, 960 540 C 960 515, 900 495, 815 495"
+              stroke="#22d3ee" stroke-width="1.5" fill="none" stroke-dasharray="4,3"
+              marker-end="url(#arrow-cyan)"/>
+        <text x="930" y="550" fill="#22d3ee" font-size="7">every N min</text>
+
+        <!-- Scheduler → Market Watcher trigger -->
+        <line x1="880" y1="500" x2="815" y2="500" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arrow-amber)"/>
+
+        <!-- Auto-Trade Gate between AI Analyzer → Broker -->
+        <rect x="695" y="230" width="50" height="20" rx="4" fill="rgba(5,150,105,0.2)" stroke="#34d399" stroke-width="1"/>
+        <text x="720" y="243" fill="#34d399" font-size="7" font-weight="600" text-anchor="middle">Gate</text>
 
         <!-- Database arrow -->
         <path d="M 815 117 L 815 223" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-violet)"/>
@@ -346,8 +365,12 @@
           <li>📡 TwelveData → Real-time OHLCV + RSI/SMA/EMA/Volume indicators</li>
           <li>🧠 3 Ensemble Strategies → Weighted voting → Consensus signals</li>
           <li>🤖 DeepSeek AI Meta-Analyzer → BUY/SELL/HOLD with reasoning + TP/SL</li>
-          <li>🏦 Alpaca Paper → Market orders, positions sync, account tracking</li>
+          <li>🏦 Alpaca Paper → Market orders, bracket TP/SL, positions sync, account tracking</li>
           <li>🗄️ SQLite → Persistent storage for trades, backtests, &amp; reports</li>
+          <li>🔄 Market Watcher → 24/7 background loop, runs every N min during market hours</li>
+          <li>🛡️ TP/SL Recalc → Auto-adjust stale TP/SL to current market price via get_current_price()</li>
+          <li>💾 DB Persist → Watcher saves trades to SQLite with recalibrated TP/SL values</li>
+          <li>⚠️ Error Track → Watcher exposes last_tick_error + failed_ticks in /api/health</li>
         </ul>
       </div>
       <div class="card">
@@ -374,11 +397,11 @@
           <li>📈 Analysis — Per-symbol AI recommendations with strategy signals card</li>
           <li>🔄 Trades — Trade history with filters &amp; pagination</li>
           <li>🔬 Backtest — Run historical simulation with full metrics (Sharpe, DD, Win Rate)</li>
-          <li>⚙️ Settings — API config, environment, mock mode toggle</li>
+          <li>⚙️ Settings — API config, mock/auto-trade toggle, Market Watcher 24/7 ON/OFF</li>
         </ul>
       </div>
     </div>
-    <p class="footer">AI Trading Bot v2.0 • Ensemble Strategies + Live Strategy Page • Built for Mahfudz • 2026</p>
+    <p class="footer">AI Trading Bot v2.2 • Market Watcher 24/7 + TP/SL Auto-Recalibrate + DB Persistence + Error Tracking • Built for Mahfudz • 2026</p>
   </div>
 </body>
 </html>

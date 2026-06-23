@@ -56,7 +56,7 @@ export interface Analysis {
   strategySignals?: any[];
   strategySummary?: any;
   marketSentiment?: {
-    polymorpharket?: any[];
+    polymarket?: any[];
     fearGreed?: { score: number; label: string; previousClose: number };
     news?: { score: number; label: string; headlineCount: number; topHeadlines: string[] };
     compositeLabel: string;
