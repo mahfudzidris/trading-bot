@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -25,25 +25,49 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(true); // default true for SSR safety
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close sidebar when resizing to desktop
+  useEffect(() => {
+    if (!isMobile) setMobileMenuOpen(false);
+  }, [isMobile]);
+
+  const toggleMenu = () => setMobileMenuOpen(v => !v);
+  const closeMenu = () => setMobileMenuOpen(false);
 
   return (
     <div className="flex min-h-screen bg-[#0f172a]">
       {/* Mobile overlay */}
-      {mobileMenuOpen && (
+      {isMobile && mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60"
+          onClick={closeMenu}
+          onTouchEnd={(e) => { e.preventDefault(); closeMenu(); }}
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-slate-800 bg-[#0f172a] transition-transform duration-200 lg:relative lg:translate-x-0',
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          // Mobile: fixed overlay; Desktop: relative in-flow
+          isMobile
+            ? 'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-slate-800 bg-[#0f172a] transition-transform duration-200'
+            : 'relative w-64 border-r border-slate-800 bg-[#0f172a]',
+          isMobile && (mobileMenuOpen ? 'translate-x-0' : '-translate-x-full')
         )}
       >
         {/* Logo */}
@@ -54,14 +78,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-base font-bold text-slate-100">TradeBot</span>
           </Link>
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            onTouchStart={() => setMobileMenuOpen(false)}
-            className="rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50 lg:hidden"
-            aria-label="Close menu"
-          >
-            <X className="pointer-events-none h-5 w-5" />
-          </button>
+          {isMobile && (
+            <button
+              onClick={closeMenu}
+              onTouchEnd={(e) => { e.preventDefault(); closeMenu(); }}
+              type="button"
+              className="flex items-center justify-center rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50"
+              aria-label="Close menu"
+            >
+              <span className="pointer-events-none flex items-center justify-center">
+                <X className="h-5 w-5" />
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -73,7 +102,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={closeMenu}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all',
                   isActive
@@ -81,7 +110,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="pointer-events-none h-5 w-5" />
                 {item.label}
                 {isActive && (
                   <div className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -106,25 +135,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        {/* Top bar (mobile) */}
-        <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4 lg:hidden">
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            onTouchStart={() => setMobileMenuOpen(true)}
-            className="rounded-lg p-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50"
-            aria-label="Open menu"
-          >
-            <Menu className="pointer-events-none h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
-              <TrendingUp className="h-3.5 w-3.5 text-white" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top bar (mobile only) */}
+        {isMobile && (
+          <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4">
+            <button
+              onClick={toggleMenu}
+              onTouchEnd={(e) => { e.preventDefault(); toggleMenu(); }}
+              type="button"
+              className="flex items-center justify-center rounded-lg p-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50"
+              aria-label="Open menu"
+            >
+              <span className="pointer-events-none flex items-center justify-center">
+                <Menu className="h-5 w-5" />
+              </span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
+                <TrendingUp className="h-3.5 w-3.5 text-white" />
+              </div>
+              <span className="text-sm font-bold text-slate-100">TradeBot</span>
             </div>
-            <span className="text-sm font-bold text-slate-100">TradeBot</span>
-          </div>
-          <div className="w-11" /> {/* spacer matching button width */}
-        </header>
+            <div className="w-11" /> {/* spacer */}
+          </header>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
