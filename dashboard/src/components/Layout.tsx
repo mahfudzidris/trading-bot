@@ -56,7 +56,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="rounded-lg p-1 text-slate-500 hover:text-slate-300 lg:hidden"
+            className="rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50 lg:hidden"
+            aria-label="Close menu"
           >
             <X className="h-5 w-5" />
           </button>
@@ -73,7 +74,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                  'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all',
                   isActive
                     ? 'bg-emerald-500/10 text-emerald-400'
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
@@ -109,7 +110,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4 lg:hidden">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="rounded-lg p-1.5 text-slate-400 hover:text-slate-200"
+            className="rounded-lg p-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50"
+            aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -119,7 +121,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-sm font-bold text-slate-100">TradeBot</span>
           </div>
-          <div className="w-8" /> {/* spacer */}
+          <div className="w-11" /> {/* spacer matching button width */}
         </header>
 
         {/* Page content */}
