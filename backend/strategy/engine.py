@@ -97,29 +97,37 @@ class StrategyEngine:
                 logger.info("[%s] AUTO_TRADE=OFF — analysis done, trade skipped", symbol)
                 action_taken = {"type": "simulated_buy", "reason": "AUTO_TRADE disabled"}
             else:
-                # Determine position size respecting max_position_size
-                account = await self.broker.get_account()
-                buying_power = account.get("buying_power", 100_000.0)
-                price = indicators.get("price", quote.get("price", 100.0))
-                max_capital = buying_power * self.config.TRADE_MAX_POSITION_SIZE
-                qty = max(1, int(max_capital / price))
+                # ── Check if already have open position ──
+                positions = await self.broker.get_positions()
+                existing = next((p for p in positions if p["symbol"] == symbol and int(p.get("qty", 0)) > 0), None)
+                if existing:
+                    qty_held = int(existing["qty"])
+                    logger.info("[%s] Already holding %d shares — BUY skipped (position exists)", symbol, qty_held)
+                    action_taken = {"type": "hold", "reason": f"Already holding {qty_held} shares", "qty": qty_held, "price": float(existing.get("current_price", 0))}
+                else:
+                    # Determine position size respecting max_position_size
+                    account = await self.broker.get_account()
+                    buying_power = account.get("buying_power", 100_000.0)
+                    price = indicators.get("price", quote.get("price", 100.0))
+                    max_capital = buying_power * self.config.TRADE_MAX_POSITION_SIZE
+                    qty = max(1, int(max_capital / price))
 
-                if qty > 0:
-                    order = await self.broker.place_market_order(
-                        symbol, qty, "BUY",
-                        take_profit=decision.get("take_profit"),
-                        stop_loss=decision.get("stop_loss"),
-                    )
-                    action_taken = {
-                        "type": "BUY",
-                        "qty": qty,
-                        "price": price,
-                        "order": order,
-                    }
-                    logger.info("[%s] Auto-trade BUY %d @ $%.2f (TP: $%.2f, SL: $%.2f)",
-                                symbol, qty, price,
-                                decision.get("take_profit", 0),
-                                decision.get("stop_loss", 0))
+                    if qty > 0:
+                        order = await self.broker.place_market_order(
+                            symbol, qty, "BUY",
+                            take_profit=decision.get("take_profit"),
+                            stop_loss=decision.get("stop_loss"),
+                        )
+                        action_taken = {
+                            "type": "BUY",
+                            "qty": qty,
+                            "price": price,
+                            "order": order,
+                        }
+                        logger.info("[%s] Auto-trade BUY %d @ $%.2f (TP: $%.2f, SL: $%.2f)",
+                                    symbol, qty, price,
+                                    decision.get("take_profit", 0),
+                                    decision.get("stop_loss", 0))
 
         elif action == "SELL":
             if not self.config.AUTO_TRADE:
