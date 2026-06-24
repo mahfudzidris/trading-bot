@@ -47,7 +47,9 @@ export default function DashboardPage() {
       setRecentTrades(trades?.data ?? []);
       setPerformance(perf);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      const msg = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      console.error('[Dashboard] fetch error:', err);
+      setError(msg);
     } finally {
       setLoading(false);
     }
