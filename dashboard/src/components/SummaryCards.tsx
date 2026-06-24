@@ -18,15 +18,19 @@ interface StatCard {
 function AnimatedNumber({ value, prefix, suffix, isCurrency, isPercentage }: Omit<StatCard, 'title' | 'icon' | 'trend'>) {
   const [display, setDisplay] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
+  const prevValue = useRef(value);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
+    // Skip animation on initial mount when value is 0
+    const startVal = prevValue.current;
+    const endVal = value;
+    prevValue.current = value;
+
+    // If value hasn't changed, skip
+    if (startVal === endVal) return;
+
     const duration = 1500;
     const startTime = performance.now();
-    const startVal = 0;
-    const endVal = value;
 
     function animate(currentTime: number) {
       const elapsed = currentTime - startTime;
