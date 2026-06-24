@@ -107,7 +107,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setSidebarOpen(true)}
             type="button"
-            className="flex cursor-pointer items-center justify-center rounded-lg p-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50"
+            className="flex cursor-pointer items-center justify-center rounded-lg px-4 py-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50 active:scale-95 transition-transform"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5 pointer-events-none" />
