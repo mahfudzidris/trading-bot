@@ -35,21 +35,40 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    // Add timeout to prevent hanging on slow mobile connections
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
-      const [acc, rep, trades, perf] = await Promise.all([
-        fetchAccount(),
-        fetchDailyReports(),
-        fetchTrades({ limit: 10, page: 1 }),
-        fetchPerformance(),
+      const results = await Promise.allSettled([
+        fetchAccount(controller.signal),
+        fetchDailyReports(controller.signal),
+        fetchTrades({ limit: 10, page: 1 }, controller.signal),
+        fetchPerformance(controller.signal),
       ]);
-      setAccount(acc);
-      setReports(rep);
-      setRecentTrades(trades?.data ?? []);
-      setPerformance(perf);
+
+      clearTimeout(timeoutId);
+
+      const [accResult, repResult, tradesResult, perfResult] = results;
+
+      // Set what we got, even if some failed
+      if (accResult.status === 'fulfilled') setAccount(accResult.value);
+      if (repResult.status === 'fulfilled') setReports(repResult.value);
+      if (tradesResult.status === 'fulfilled') setRecentTrades(tradesResult.value?.data ?? []);
+      if (perfResult.status === 'fulfilled') setPerformance(perfResult.value);
+
+      // Show error only if ALL failed
+      const failures = results.filter(r => r.status === 'rejected');
+      if (failures.length === results.length) {
+        const err = failures[0] as PromiseRejectedResult;
+        setError(err.reason instanceof Error ? err.reason.message : 'Failed to load dashboard data');
+      } else if (failures.length > 0) {
+        console.warn('[Dashboard] Some fetches failed:', failures.map(f => (f as PromiseRejectedResult).reason));
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load dashboard data';
       console.error('[Dashboard] fetch error:', err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }

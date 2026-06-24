@@ -49,6 +49,7 @@ async function request<T>(
   try {
     const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', ...options?.headers },
+      signal: options?.signal,
       ...options,
     });
     if (!res.ok) {
@@ -235,8 +236,8 @@ function getMockData<T>(endpoint: string, _options?: RequestInit): T {
 
 // ── Exported API Functions ────────────────────────────────────────
 
-export async function fetchAccount(): Promise<Account> {
-  const raw = await request<Record<string, unknown>>('/api/account');
+export async function fetchAccount(signal?: AbortSignal): Promise<Account> {
+  const raw = await request<Record<string, unknown>>('/api/account', { signal });
   return {
     balance: (raw.balance as number) ?? 0,
     buyingPower: (raw.buyingPower as number) ?? 0,
@@ -245,12 +246,13 @@ export async function fetchAccount(): Promise<Account> {
   };
 }
 
-export async function fetchPositions(): Promise<Position[]> {
-  return request<Position[]>('/api/positions');
+export async function fetchPositions(signal?: AbortSignal): Promise<Position[]> {
+  return request<Position[]>('/api/positions', { signal });
 }
 
 export async function fetchTrades(
-  filters?: TradeFilters
+  filters?: TradeFilters,
+  signal?: AbortSignal
 ): Promise<PaginatedResponse<Trade>> {
   const params = new URLSearchParams();
   if (filters?.symbol) params.set('symbol', filters.symbol);
@@ -261,7 +263,7 @@ export async function fetchTrades(
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.limit) params.set('limit', String(filters.limit));
   const qs = params.toString();
-  const res = await request<Trade[] | PaginatedResponse<Trade>>(`/api/trades${qs ? `?${qs}` : ''}`);
+  const res = await request<Trade[] | PaginatedResponse<Trade>>(`/api/trades${qs ? `?${qs}` : ''}`, { signal });
   // API returns array directly; wrap it in PaginatedResponse
   if (Array.isArray(res)) {
     return { data: res, total: res.length, page: 1, limit: res.length, totalPages: 1 };
@@ -269,8 +271,8 @@ export async function fetchTrades(
   return res;
 }
 
-export async function fetchDailyReports(): Promise<DailyReport[]> {
-  return request<DailyReport[]>('/api/daily-reports');
+export async function fetchDailyReports(signal?: AbortSignal): Promise<DailyReport[]> {
+  return request<DailyReport[]>('/api/daily-reports', { signal });
 }
 
 export async function executeTrade(data: {
@@ -293,8 +295,8 @@ export async function fetchStrategy(symbol?: string): Promise<any> {
   return request(`/api/strategy${qs}`);
 }
 
-export async function fetchPerformance(): Promise<Performance> {
-  return request<Performance>('/api/performance');
+export async function fetchPerformance(signal?: AbortSignal): Promise<Performance> {
+  return request<Performance>('/api/performance', { signal });
 }
 
 export async function analyzeSymbol(symbol: string): Promise<Analysis> {
