@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -27,23 +27,38 @@ const navItems = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleRef = useRef<HTMLInputElement>(null);
+
+  // Close sidebar on navigation (route change)
+  useEffect(() => {
+    if (toggleRef.current) {
+      toggleRef.current.checked = false;
+    }
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-[#0f172a]">
-      {/* Overlay (mobile only) — CSS media query hides on lg+ */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Hidden checkbox — the CSS-only toggle mechanism */}
+      <input
+        type="checkbox"
+        id="sidebar-toggle"
+        ref={toggleRef}
+        className="peer hidden"
+        aria-hidden="true"
+      />
 
-      {/* Sidebar — mobile: fixed overlay; lg+: relative in-flow */}
+      {/* Overlay — CSS-only: peer-checked controls visibility */}
+      <label
+        htmlFor="sidebar-toggle"
+        className="fixed inset-0 z-40 bg-black/60 opacity-0 pointer-events-none peer-checked:opacity-100 peer-checked:pointer-events-auto transition-opacity duration-200 lg:hidden"
+        aria-label="Close menu"
+      />
+
+      {/* Sidebar — CSS-only: peer-checked slides in */}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-800 bg-[#0f172a] transition-transform duration-200 lg:relative lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          '-translate-x-full peer-checked:translate-x-0'
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-slate-800 px-5">
@@ -53,25 +68,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-base font-bold text-slate-100">TradeBot</span>
           </Link>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            type="button"
-            className="flex items-center justify-center rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50 lg:hidden"
+          <label
+            htmlFor="sidebar-toggle"
+            className="flex cursor-pointer items-center justify-center rounded-lg p-3 text-slate-500 hover:text-slate-300 active:bg-slate-800/50 lg:hidden"
             aria-label="Close menu"
           >
             <X className="h-5 w-5 pointer-events-none" />
-          </button>
+          </label>
         </div>
 
         <nav className="mt-4 space-y-1 px-3">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || 
+            const isActive = pathname === item.href ||
               (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  if (toggleRef.current) toggleRef.current.checked = false;
+                }}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all',
                   isActive
@@ -102,17 +118,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar with hamburger — always visible on mobile via CSS */}
+        {/* Top bar with hamburger — CSS-only peer mechanism */}
         <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            type="button"
+          <label
+            htmlFor="sidebar-toggle"
             className="flex cursor-pointer items-center justify-center rounded-lg px-4 py-3 text-slate-400 hover:text-slate-200 active:bg-slate-800/50 active:scale-95 transition-transform"
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5 pointer-events-none" />
-          </button>
+          </label>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
               <TrendingUp className="h-3.5 w-3.5 text-white" />
