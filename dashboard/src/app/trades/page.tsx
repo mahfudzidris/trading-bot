@@ -34,20 +34,32 @@ export default function TradesPage() {
   const loadTrades = useCallback(async (p: number) => {
     setLoading(true);
     setError(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
-      const data = await fetchTrades({
-        symbol: symbol || undefined,
-        side: side || undefined,
-        status: status || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        page: p,
-        limit,
-      });
+      const data = await fetchTrades(
+        {
+          symbol: symbol || undefined,
+          side: side || undefined,
+          status: status || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          page: p,
+          limit,
+        },
+        controller.signal
+      );
       setTradesData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load trades');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load trades');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [symbol, side, status, startDate, endDate]);

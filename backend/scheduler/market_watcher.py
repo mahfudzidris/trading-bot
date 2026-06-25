@@ -181,6 +181,10 @@ class MarketWatcher:
                             # Skip failed orders
                             if order.get("status") == "FAILED":
                                 continue
+                            # Skip non-trade actions (e.g. "hold" when position exists)
+                            action_type = action.get("type", "").upper()
+                            if action_type not in ("BUY", "SELL"):
+                                continue
                             trade_data = {
                                 "symbol": a["symbol"],
                                 "side": action.get("type", decision.get("action", "HOLD")),
@@ -213,6 +217,71 @@ class MarketWatcher:
             )
             self._last_tick_time = datetime.utcnow()
             self._last_tick_error = None
+
+            # 5. Create/update daily report for today from trade & account data
+            if self._db_factory:
+                try:
+                    from db.crud import create_daily_report, get_daily_reports
+                    from db.models import Trade, DailyReport
+                    from sqlalchemy import select, func
+                    from datetime import date
+
+                    async for session in self._db_factory():
+                        today_date = date.today()
+
+                        # Check if report exists for today
+                        existing = await session.execute(
+                            select(DailyReport).where(DailyReport.date == today_date.isoformat())
+                        )
+                        report = existing.scalar_one_or_none()
+
+                        # Get today's closed trades from DB
+                        result = await session.execute(
+                            select(Trade).where(
+                                func.date(Trade.exit_time) == today_date,
+                                Trade.status == "CLOSED",
+                            )
+                        )
+                        closed_trades = result.scalars().all()
+
+                        # Get account PnL from broker
+                        acc = await self.broker.get_account()
+                        total_pnl_val = acc.get("pnl", 0) or acc.get("totalPnl", 0)
+                        balance = acc.get("balance", 0) or acc.get("portfolio_value", 0)
+                        cash = acc.get("cash", 0) or balance
+
+                        wins = sum(1 for t in closed_trades if (t.pnl or 0) > 0)
+                        losses = sum(1 for t in closed_trades if (t.pnl or 0) <= 0)
+                        total_closed = len(closed_trades)
+                        today_pnl = sum(t.pnl or 0 for t in closed_trades)
+                        win_rate = round(wins / total_closed * 100, 1) if total_closed > 0 else 0
+
+                        report_data = {
+                            "date": today_date.isoformat(),
+                            "total_pnl": round(today_pnl, 2) if today_pnl != 0 else round(total_pnl_val, 2),
+                            "win_count": wins,
+                            "loss_count": losses,
+                            "total_trades": total_closed if total_closed > 0 else (wins + losses or 1),
+                            "win_rate": win_rate,
+                            "starting_balance": round(cash - total_pnl_val, 2),
+                            "ending_balance": round(cash, 2),
+                            "notes": f"Watcher auto-report. {total_closed} closed today, PnL: ${today_pnl:.2f}",
+                        }
+
+                        if report:
+                            # Update existing
+                            for key, val in report_data.items():
+                                setattr(report, key, val)
+                        else:
+                            # Create new
+                            new_report = DailyReport(**report_data)
+                            session.add(new_report)
+
+                        await session.commit()
+                        logger.info("📋 Daily report saved for %s (PnL=$%.2f, %d trades)", today_date, today_pnl, total_closed)
+                        break
+                except Exception as exc:
+                    logger.warning("⚠️ Could not persist daily report: %s", exc)
         except Exception as exc:
             logger.exception("🔴 Market watcher tick FAILED: %s", exc)
             self._last_tick_error = str(exc)

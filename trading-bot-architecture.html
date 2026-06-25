@@ -58,7 +58,7 @@
         <div class="pulse-dot"></div>
         <h1>AI Trading Bot — Architecture</h1>
       </div>
-      <p class="subtitle">TwelveData → Ensemble Strategies → Market Sentiment → DeepSeek AI Meta-Analyzer → Auto-Trade (Bracket TP/SL) → Alpaca Broker → Dashboard · 24/7 Market Watcher Loop · TP/SL Auto-Recalibrate · DB Persist · Error Tracking</p>
+      <p class="subtitle">TwelveData → Ensemble Strategies → Market Sentiment → DeepSeek AI Meta-Analyzer → Auto-Trade (Bracket TP/SL) → Alpaca Broker → Dashboard · 24/7 Market Watcher Loop · TP/SL Auto-Recalibrate · DB Persist · Auto Daily Report · Position Guard · Error Tracking</p>
     </div>
 
     <div class="diagram-container">
@@ -168,9 +168,18 @@
         <text x="830" y="258" fill="#94a3b8" font-size="9" text-anchor="middle">Alpaca Connector</text>
         <text x="830" y="272" fill="#22d3ee" font-size="7" text-anchor="middle">Bracket TP/SL · Price Recalc</text>
 
+        <!-- Position Guard (NEW) -->
+        <rect x="370" y="225" width="115" height="65" rx="6" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="2"/>
+        <text x="427" y="245" fill="white" font-size="9" font-weight="600" text-anchor="middle">🛡️ Position</text>
+        <text x="427" y="260" fill="#fbbf24" font-size="8" text-anchor="middle">Guard</text>
+        <text x="427" y="276" fill="#94a3b8" font-size="7" text-anchor="middle">(NO double-buy)</text>
+
         <!-- Data Client → AI Analyzer arrow -->
-        <line x1="220" y1="252" x2="478" y2="252" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
-        <text x="349" y="246" fill="#94a3b8" font-size="7" text-anchor="middle">Indicators</text>
+        <line x1="220" y1="252" x2="368" y2="252" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+        <text x="294" y="246" fill="#94a3b8" font-size="7" text-anchor="middle">Indicators</text>
+
+        <!-- Position Guard → AI Analyzer arrow -->
+        <line x1="485" y1="252" x2="478" y2="252" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
 
         <!-- AI → Broker arrow -->
         <line x1="680" y1="252" x2="738" y2="252" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
@@ -262,7 +271,7 @@
         <rect x="650" y="500" width="330" height="75" rx="6" fill="rgba(8,145,178,0.15)" stroke="#22d3ee" stroke-width="2"/>
         <text x="815" y="520" fill="#22d3ee" font-size="11" font-weight="600" text-anchor="middle">🔄 Market Watcher</text>
         <text x="815" y="538" fill="#94a3b8" font-size="9" text-anchor="middle">24/7 Background Loop</text>
-        <text x="815" y="554" fill="#22d3ee" font-size="7" text-anchor="middle">Order Verify · DB Persist · Error Track</text>
+        <text x="815" y="554" fill="#22d3ee" font-size="7" text-anchor="middle">Order Verify · DB Persist · Auto Report · Error Track</text>
 
         <!-- Loop arrow around Market Watcher -->
         <path d="M 815 565 C 900 565, 960 565, 960 540 C 960 515, 900 495, 815 495"
@@ -296,14 +305,14 @@
         <!-- Dashboard -->
         <rect x="40" y="580" width="140" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
         <text x="110" y="600" fill="white" font-size="10" font-weight="600" text-anchor="middle">📊 Dashboard</text>
-        <text x="110" y="616" fill="#94a3b8" font-size="7" text-anchor="middle">PnL · Quick Actions</text>
-        <text x="110" y="630" fill="#22d3ee" font-size="7" text-anchor="middle">AI Card · Positions</text>
+        <text x="110" y="616" fill="#94a3b8" font-size="7" text-anchor="middle">PnL · SummaryCards</text>
+        <text x="110" y="630" fill="#22d3ee" font-size="7" text-anchor="middle">AccountSummary (NEW)</text>
 
         <!-- Trades -->
         <rect x="210" y="580" width="140" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
         <text x="280" y="600" fill="white" font-size="10" font-weight="600" text-anchor="middle">🔄 Trades</text>
         <text x="280" y="616" fill="#94a3b8" font-size="7" text-anchor="middle">Trade History</text>
-        <text x="280" y="630" fill="#22d3ee" font-size="7" text-anchor="middle">Filters · Pagination</text>
+        <text x="280" y="630" fill="#22d3ee" font-size="7" text-anchor="middle">Filters · PaginationTimeout</text>
 
         <!-- Analysis -->
         <rect x="380" y="580" width="140" height="65" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
@@ -370,6 +379,8 @@
           <li>🔄 Market Watcher → 24/7 background loop, runs every N min during market hours</li>
           <li>🛡️ TP/SL Recalc → Auto-adjust stale TP/SL to current market price via get_current_price()</li>
           <li>💾 DB Persist → Watcher saves trades to SQLite with recalibrated TP/SL values</li>
+          <li>📋 Auto Daily Report → Watcher creates/updates daily report every tick from closed trades</li>
+          <li>🛡️ Position Guard → Prevents double-buy when position already exists (SPY 293 fix)</li>
           <li>⚠️ Error Track → Watcher exposes last_tick_error + failed_ticks in /api/health</li>
         </ul>
       </div>
@@ -392,16 +403,16 @@
           <h3>Dashboard Pages</h3>
         </div>
         <ul>
-          <li>📊 Dashboard — PnL chart, AI Card with Buy/Sell, Quick Actions, Positions</li>
-          <li>🧠 Strategy — Live indicators + AI prompt preview + ensemble signals (new!)</li>
+          <li>📊 Dashboard — PnL chart, SummaryCards, AccountSummary (cash/equity/PnL/power), Positions</li>
+          <li>🧠 Strategy — Live indicators + AI prompt preview + ensemble signals</li>
           <li>📈 Analysis — Per-symbol AI recommendations with strategy signals card</li>
-          <li>🔄 Trades — Trade history with filters &amp; pagination</li>
+          <li>🔄 Trades — Trade history with filters, pagination &amp; 10s timeout</li>
           <li>🔬 Backtest — Run historical simulation with full metrics (Sharpe, DD, Win Rate)</li>
           <li>⚙️ Settings — API config, mock/auto-trade toggle, Market Watcher 24/7 ON/OFF</li>
         </ul>
       </div>
     </div>
-    <p class="footer">AI Trading Bot v2.2 • Market Watcher 24/7 + TP/SL Auto-Recalibrate + DB Persistence + Error Tracking • Built for Mahfudz • 2026</p>
+    <p class="footer">AI Trading Bot v2.3 • Market Watcher 24/7 + Auto Daily Report + Position Guard + AccountSummary • Built for Mahfudz • 2026</p>
   </div>
 </body>
 </html>

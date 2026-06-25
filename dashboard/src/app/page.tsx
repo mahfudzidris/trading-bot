@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Play, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 import SummaryCards from '@/components/SummaryCards';
+import AccountSummary from '@/components/AccountSummary';
 import PnLChart from '@/components/PnLChart';
 import TradeTable from '@/components/TradeTable';
 import PerformancePanel from '@/components/PerformancePanel';
@@ -11,7 +12,6 @@ import {
   fetchDailyReports,
   fetchTrades,
   fetchPerformance,
-  runAnalysis,
 } from '@/lib/api';
 import type {
   Account,
@@ -27,8 +27,6 @@ export default function DashboardPage() {
   const [performance, setPerformance] = useState<Performance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [runningAnalysis, setRunningAnalysis] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
 
   const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
@@ -77,23 +75,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleRunAnalysis = async () => {
-    setRunningAnalysis(true);
-    setAnalysisResult(null);
-    try {
-      const result = await runAnalysis();
-      setAnalysisResult(result.message);
-      // Refresh data after analysis
-      await fetchData();
-    } catch (err) {
-      setAnalysisResult(
-        err instanceof Error ? `Error: ${err.message}` : 'Analysis failed'
-      );
-    } finally {
-      setRunningAnalysis(false);
-    }
-  };
 
   // Build chart data from daily reports
   const chartData = reports
@@ -156,6 +137,18 @@ export default function DashboardPage() {
         dayPnl={account?.dayPnl ?? 0}
       />
 
+      {/* Account Summary */}
+      <div className="lg:hidden">
+        <AccountSummary
+          cash={account?.cash ?? 0}
+          portfolioValue={account?.portfolioValue ?? 0}
+          buyingPower={account?.buyingPower ?? 0}
+          totalPnl={account?.totalPnl ?? 0}
+          status={account?.status ?? ''}
+          balance={account?.balance ?? 0}
+        />
+      </div>
+
       {/* Main grid: Chart + Performance */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
@@ -202,29 +195,15 @@ export default function DashboardPage() {
             compact
           />
         </div>
-        <div className="lg:col-span-1">
-          <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
-              Quick Actions
-            </h3>
-            <button
-              onClick={handleRunAnalysis}
-              disabled={runningAnalysis}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50"
-            >
-              {runningAnalysis ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              {runningAnalysis ? 'Analyzing...' : 'Run Daily Analysis'}
-            </button>
-            {analysisResult && (
-              <div className="mt-3 rounded-lg bg-slate-800/50 p-2.5">
-                <p className="text-xs text-slate-400">{analysisResult}</p>
-              </div>
-            )}
-          </div>
+        <div className="lg:col-span-1 hidden lg:block">
+          <AccountSummary
+            cash={account?.cash ?? 0}
+            portfolioValue={account?.portfolioValue ?? 0}
+            buyingPower={account?.buyingPower ?? 0}
+            totalPnl={account?.totalPnl ?? 0}
+            status={account?.status ?? ''}
+            balance={account?.balance ?? 0}
+          />
         </div>
       </div>
     </div>

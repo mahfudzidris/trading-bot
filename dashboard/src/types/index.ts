@@ -42,6 +42,9 @@ export interface Account {
   buyingPower: number;
   totalPnl: number;
   dayPnl: number;
+  cash: number;
+  portfolioValue: number;
+  status: string;
 }
 
 export interface Analysis {

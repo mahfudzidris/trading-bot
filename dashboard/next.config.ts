@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: (process.env.ALLOWED_ORIGINS || '100.108.97.116').split(','),
   async rewrites() {
     return [
       {

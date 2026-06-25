@@ -85,6 +85,10 @@ async def run_daily(
             decision = analysis.get("decision", {})
             action_taken = analysis.get("action_taken", {})
             if action_taken:
+                # Skip non-trade actions (e.g. "hold" when position exists)
+                action_type = action_taken.get("type", "").upper()
+                if action_type not in ("BUY", "SELL"):
+                    continue
                 trade_data = {
                     "symbol": analysis["symbol"],
                     "side": action_taken.get("type", decision.get("action", "HOLD")),

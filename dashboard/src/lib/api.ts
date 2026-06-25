@@ -240,9 +240,12 @@ export async function fetchAccount(signal?: AbortSignal): Promise<Account> {
   const raw = await request<Record<string, unknown>>('/api/account', { signal });
   return {
     balance: (raw.balance as number) ?? 0,
-    buyingPower: (raw.buyingPower as number) ?? 0,
+    buyingPower: (raw.buyingPower as number) ?? (raw.buying_power as number) ?? 0,
     totalPnl: (raw.pnl as number) ?? (raw.totalPnl as number) ?? 0,
     dayPnl: (raw.dayPnl as number) ?? 0,
+    cash: (raw.cash as number) ?? 0,
+    portfolioValue: (raw.portfolioValue as number) ?? (raw.portfolio_value as number) ?? 0,
+    status: (raw.status as string) ?? '',
   };
 }
 
