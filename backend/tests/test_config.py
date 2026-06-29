@@ -16,11 +16,17 @@ class TestSettings:
         s = Settings(_env_file=None)  # Don't read .env
         assert s.MOCK_MODE is True
         assert s.PORT == 8000
-        assert "SPY" in s.SYMBOLS
+        assert "SPLG" in s.SYMBOLS
         assert s.TRADE_MAX_POSITION_SIZE == 0.1
         assert s.ALPACA_PAPER is True
-        assert s.TRADE_STOP_LOSS_PCT == 0.02
-        assert s.TRADE_TAKE_PROFIT_PCT == 0.05
+        assert s.TRADE_STOP_LOSS_PCT == 0.01
+        assert s.TRADE_TAKE_PROFIT_PCT == 0.02
+        assert s.DCA_ENABLED is True
+        assert s.DCA_TRANCHES == 3
+        assert s.TRAILING_STOP_ENABLED is True
+        assert s.TRAILING_STOP_TRAIL_PCT == 0.005
+        assert s.SHORT_TRADES_ENABLED is False
+        assert s.MARKET_WATCH_INTERVAL == 15
 
     def test_env_override(self, monkeypatch):
         """Verify environment variables override defaults."""
@@ -32,9 +38,10 @@ class TestSettings:
         assert s.PORT == 9000
 
     def test_symbols_list(self):
-        """Verify SYMBOLS is a list of strings with SPY."""
+        """Verify SYMBOLS is a list of strings with SPLG."""
         s = Settings()
-        assert "SPY" in s.SYMBOLS
+        assert isinstance(s.SYMBOLS, list)
+        assert "SPLG" in s.SYMBOLS
         assert all(isinstance(sym, str) for sym in s.SYMBOLS)
 
     def test_model_config(self):

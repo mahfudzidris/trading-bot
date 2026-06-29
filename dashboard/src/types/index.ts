@@ -1,7 +1,7 @@
 export interface Trade {
   id: string;
   symbol: string;
-  side: 'buy' | 'sell';
+  side: 'buy' | 'sell' | 'short' | 'cover';
   qty: number;
   entryPrice: number;
   exitPrice?: number;
@@ -49,7 +49,7 @@ export interface Account {
 
 export interface Analysis {
   symbol: string;
-  action: 'buy' | 'sell' | 'hold';
+  action: 'buy' | 'sell' | 'short' | 'cover' | 'hold';
   confidence: number;
   reasoning: string;
   takeProfit: number;

@@ -30,6 +30,8 @@ class TradeStatus(str, enum.Enum):
 class TradeSide(str, enum.Enum):
     BUY = "BUY"
     SELL = "SELL"
+    SHORT = "SHORT"
+    COVER = "COVER"
 
 
 # ── Base ───────────────────────────────────────────────────────────────────
@@ -46,7 +48,7 @@ class Trade(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(20), nullable=False, index=True)
     side = Column(SAEnum(TradeSide), nullable=False)
-    qty = Column(Integer, nullable=False)
+    qty = Column(Float, nullable=False)
     entry_price = Column(Float, nullable=False)
     exit_price = Column(Float, nullable=True)
     entry_time = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -115,7 +117,7 @@ class Position(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(20), nullable=False, unique=True, index=True)
-    qty = Column(Integer, nullable=False)
+    qty = Column(Float, nullable=False)
     avg_entry_price = Column(Float, nullable=False)
     current_price = Column(Float, nullable=False)
     unrealized_pnl = Column(Float, default=0.0)

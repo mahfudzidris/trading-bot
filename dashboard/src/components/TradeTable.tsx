@@ -150,7 +150,7 @@ export default function TradeTable({ trades, loading, compact }: TradeTableProps
               </td>
               {!compact && (
                 <>
-                  <td className="whitespace-nowrap px-3 py-3 text-slate-300">{trade.qty}</td>
+                  <td className="whitespace-nowrap px-3 py-3 font-mono text-slate-300">{trade.qty.toFixed(4).replace(/\.?0+$/, '')}</td>
                   <td className="whitespace-nowrap px-3 py-3 font-mono text-slate-300">
                     ${trade.entryPrice.toLocaleString()}
                   </td>

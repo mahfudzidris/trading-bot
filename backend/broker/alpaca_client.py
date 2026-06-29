@@ -47,6 +47,7 @@ class AlpacaClient:
         self._mock_orders: list[dict[str, Any]] = []
         self._mock_base_prices: dict[str, float] = {
             "SPY": 570.0,
+            "SPLG": 65.0,
         }
 
         if not mock_mode and ALPACA_AVAILABLE:
@@ -147,7 +148,7 @@ class AlpacaClient:
                 result.append(
                     {
                         "symbol": p.symbol,
-                        "qty": int(p.qty),
+                        "qty": float(p.qty),
                         "market_value": float(p.market_value),
                         "unrealized_pl": float(p.unrealized_pl),
                         "unrealized_pl_pct": float(p.unrealized_plpc),
@@ -189,7 +190,7 @@ class AlpacaClient:
     # ──────────────────────────────────────────────────────────────────────
 
     async def place_market_order(
-        self, symbol: str, qty: int, side: str,
+        self, symbol: str, qty: float, side: str,
         take_profit: float | None = None,
         stop_loss: float | None = None,
     ) -> dict[str, Any]:
@@ -265,12 +266,12 @@ class AlpacaClient:
             return {
                 "id": order.id,
                 "symbol": order.symbol,
-                "qty": int(order.qty),
+                "qty": float(order.qty),
                 "side": order.side.value,
                 "type": order.type.value,
                 "status": order.status,
                 "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else 0,
-                "filled_qty": int(order.filled_qty) if order.filled_qty else 0,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
                 "created_at": str(order.created_at),
                 "filled_at": str(order.filled_at) if order.filled_at else "",
                 "take_profit": take_profit,
@@ -285,7 +286,7 @@ class AlpacaClient:
     # ──────────────────────────────────────────────────────────────────────
 
     async def place_limit_order(
-        self, symbol: str, qty: int, side: str, limit_price: float
+        self, symbol: str, qty: float, side: str, limit_price: float
     ) -> dict[str, Any]:
         if self.mock_mode:
             order = {
@@ -316,13 +317,13 @@ class AlpacaClient:
             return {
                 "id": order.id,
                 "symbol": order.symbol,
-                "qty": int(order.qty),
+                "qty": float(order.qty),
                 "side": order.side.value,
                 "type": order.type.value,
                 "limit_price": float(order.limit_price),
                 "status": order.status,
                 "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else 0,
-                "filled_qty": int(order.filled_qty) if order.filled_qty else 0,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
                 "created_at": str(order.created_at),
                 "filled_at": str(order.filled_at) if order.filled_at else "",
             }
@@ -335,7 +336,7 @@ class AlpacaClient:
     # ──────────────────────────────────────────────────────────────────────
 
     async def place_stop_order(
-        self, symbol: str, qty: int, side: str, stop_price: float
+        self, symbol: str, qty: float, side: str, stop_price: float
     ) -> dict[str, Any]:
         if self.mock_mode:
             order = {
@@ -366,13 +367,13 @@ class AlpacaClient:
             return {
                 "id": order.id,
                 "symbol": order.symbol,
-                "qty": int(order.qty),
+                "qty": float(order.qty),
                 "side": order.side.value,
                 "type": order.type.value,
                 "stop_price": float(order.stop_price),
                 "status": order.status,
                 "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else 0,
-                "filled_qty": int(order.filled_qty) if order.filled_qty else 0,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
                 "created_at": str(order.created_at),
                 "filled_at": str(order.filled_at) if order.filled_at else "",
             }
@@ -397,7 +398,7 @@ class AlpacaClient:
             return {"symbol": symbol.upper(), "qty": 0, "status": "no_position"}
         try:
             resp = self._trade_client.close_position(symbol)
-            return {"symbol": symbol, "qty": int(resp.qty), "status": "closed"}
+            return {"symbol": symbol, "qty": float(resp.qty), "status": "closed"}
         except Exception as exc:
             logger.error("close_position(%s) failed: %s", symbol, exc)
             return {"symbol": symbol, "qty": 0, "status": "FAILED", "error": str(exc)}
@@ -494,7 +495,7 @@ class AlpacaClient:
     # ──────────────────────────────────────────────────────────────────────
 
     def _update_mock_position(
-        self, symbol: str, qty: int, side: str, price: float
+        self, symbol: str, qty: float, side: str, price: float
     ) -> None:
         if side.upper() == "BUY":
             existing = self._mock_positions.get(symbol)

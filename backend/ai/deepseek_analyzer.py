@@ -118,7 +118,7 @@ class DeepSeekAnalyzer:
         sentiment data (Polymarket, Fear & Greed, News) is injected so the AI
         can factor in crowd sentiment and market narratives.
         """
-        prompt = f"""You are an expert quantitative trader. Analyse the following data for {symbol} and decide whether to BUY, SELL, or HOLD.
+        prompt = f"""You are an expert quantitative trader. Analyse the following data for {symbol} and decide whether to BUY, SELL (close long), SHORT (open short), COVER (close short), or HOLD.
 
 === PRICE DATA ===
 Price: ${indicators.get('price', price_data.get('price', 'N/A'))}
@@ -183,7 +183,12 @@ A strongly bearish macro sentiment against bullish technicals may warrant cautio
 
         prompt += """
 Return your analysis as a JSON object with these fields:
-- "action": "BUY" | "SELL" | "HOLD"
+- "action": "BUY" | "SELL" | "SHORT" | "COVER" | "HOLD"
+  - BUY = go long (open or add to long position)
+  - SELL = close long position
+  - SHORT = open a short position (profit from price drop)
+  - COVER = close a short position
+  - HOLD = do nothing
 - "confidence": integer 0-100
 - "reasoning": a brief explanation of your decision
 - "take_profit": price target for profit taking (or 0 if HOLD)
