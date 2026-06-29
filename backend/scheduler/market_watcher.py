@@ -131,19 +131,36 @@ class MarketWatcher:
             logger.debug("Market watcher: auto_run=OFF, sleeping")
             return
 
-        # 1. Check market clock via Alpaca
+        # 1. Check market clock via Alpaca (with time-based fallback)
+        is_open = False
         try:
             clock = await self.broker.get_clock()
+            # If Alpaca returned an error (empty keys = auth failure), use time fallback
+            if not clock.get("next_open") and not clock.get("next_close"):
+                raise ValueError("Alpaca clock returned empty (likely auth failure)")
+            is_open = clock.get("is_open", False)
+            if not is_open:
+                logger.debug("Market watcher: market closed (Alpaca clock), sleeping until next tick")
+                return
         except Exception:
-            logger.warning("Market watcher: cannot fetch market clock, skipping tick")
-            self._last_tick_error = "Cannot fetch market clock"
-            return
-
-        is_open = clock.get("is_open", False)
-
-        if not is_open:
-            logger.debug("Market watcher: market closed, sleeping until next tick")
-            return
+            # Fallback: time-based check (US equities: Mon-Fri 9:30-16:00 ET)
+            logger.warning("Market watcher: Alpaca clock unavailable, using time-based fallback")
+            self._last_tick_error = "Alpaca clock fallback (time-based)"
+            now_et = datetime.utcnow()
+            weekday = now_et.weekday()
+            hour_min = now_et.hour * 60 + now_et.minute
+            # ET is UTC-4 during EDT (summer) or UTC-5 during EST
+            # Simple check: assume EDT (Mar-Nov)
+            et_hour_min = hour_min - 240  # UTC-4
+            if et_hour_min < 0:
+                et_hour_min += 1440
+            is_open = (
+                weekday < 5
+                and 570 <= et_hour_min < 960  # 9:30-16:00 ET in minutes
+            )
+            if not is_open:
+                logger.debug("Market watcher: market closed (time-based), sleeping")
+                return
 
         # 2. Market is open — run the strategy engine
         logger.info("📊 Market watcher — market OPEN, running analysis...")
