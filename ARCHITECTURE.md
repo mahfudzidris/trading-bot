@@ -1,4 +1,4 @@
-# Trading Bot Architecture v2.2
+# Trading Bot Architecture v2.3
 
 ## Overview
 AI-powered automated trading bot for US equities (SPLG). Runs on FastAPI backend with Next.js dashboard. Executes trades via Alpaca Paper API using ensemble AI analysis.
@@ -98,6 +98,25 @@ AI Signal (BUY 85%) → Strategy Engine → DCA Check → Alpaca Order → SQLit
 - **Dashboard:** Next.js 16, port 3000
 - **Network:** Tailscale (100.108.97.116)
 - **Host:** macOS (local machine)
+
+---
+
+## Backtest Validation (Option A)
+
+6-month backtest (Jan-Jun 2026) on SPLG with $500 capital. Winner: **Option A**.
+
+| Config | TP | SL | Pos | Final | P&L | Win% | PF | Sharpe |
+|---|---|---|---|---|---|---|---|---|
+| 🔴 Baseline | 2% | 1% | 5% | $474.92 | -5.0% | 25% | 0.44 | -2.93 |
+| 🚀 **Option A (Deployed)** | **4%** | **1%** | **5%** | **$555.49** | **+11.1%** | **38%** | **1.89** | **1.63** |
+| 👍 Option B | 2% | 0.5% | 5% | $529.37 | +5.9% | 44% | 2.01 | 1.48 |
+
+**Key metrics (Option A):**
+- Total Trades: 34 (13W / 21L)
+- Avg Win: +$2.35 | Avg Loss: -$0.83
+- Best Trade: +$2.62 | Worst: -$0.89
+- Max Drawdown: -4.38%
+- CAGR: +22.4%
 
 ---
 
