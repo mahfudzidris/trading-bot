@@ -54,7 +54,7 @@ AI-powered automated trading bot for US equities (SPLG). Runs on FastAPI backend
 - **DCA (Dollar Cost Average):** 3 tranches per position
 - **Trailing Stop:** Activates at +1% profit, trails 0.5%
 - **Position Size:** 5% max per trade ($25)
-- **Stop Loss:** 1% | **Take Profit:** 2%
+- **Stop Loss:** 1% | **Take Profit:** 4%
 - **Symbol:** SPLG (~$65-$85/share)
 - **Short trades:** Disabled (cash account)
 
