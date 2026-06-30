@@ -104,13 +104,13 @@ function BacktestForm({
   onRun: (data: any) => void;
   loading: boolean;
 }) {
-  const [symbol, setSymbol] = useState('AAPL');
-  const [startDate, setStartDate] = useState('2025-06-01');
+  const [symbol, setSymbol] = useState('SPLG');
+  const [startDate, setStartDate] = useState('2026-01-01');
   const [endDate, setEndDate] = useState('');
-  const [capital, setCapital] = useState('100000');
-  const [sl, setSl] = useState('2');
-  const [tp, setTp] = useState('5');
-  const [positionSize, setPositionSize] = useState('10');
+  const [capital, setCapital] = useState('500');
+  const [sl, setSl] = useState('1');
+  const [tp, setTp] = useState('4');
+  const [positionSize, setPositionSize] = useState('5');
   const [useAi, setUseAi] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
